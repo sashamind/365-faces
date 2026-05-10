@@ -1,5 +1,5 @@
 /* ============================================
-   БАЗА
+   СБРОС И БАЗА
    ============================================ */
 * {
   margin: 0;
@@ -10,92 +10,212 @@
 html, body {
   width: 100%;
   height: 100%;
-  background: #0a0a0a;            /* почти чёрный, не агрессивный */
-  color: #eaeaea;
+  background: #fff;
   font-family: 'Inter', sans-serif;
   font-weight: 300;
-  overflow: hidden;               /* без скролла — сетка вмещается в экран */
   -webkit-font-smoothing: antialiased;
-  cursor: default;
+  overflow: hidden;
 }
 
 /* ============================================
-   ШАПКА
+   ЛЕВАЯ КОЛОНКА — скроллится
    ============================================ */
-.site-header {
+#col-left {
   position: fixed;
   top: 0;
   left: 0;
-  width: 100%;
-  height: 80px;
-  padding: 0 32px;
+  height: 100vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;
+}
+#col-left::-webkit-scrollbar {
+  display: none;
+}
+
+#grid-left {
+  position: relative;
+}
+
+/* ============================================
+   ПРАВАЯ КОЛОНКА — скроллится
+   ============================================ */
+#col-right {
+  position: fixed;
+  top: 0;
+  right: 0;
+  height: 100vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;
+}
+#col-right::-webkit-scrollbar {
+  display: none;
+}
+
+#grid-right {
+  position: relative;
+}
+
+/* ============================================
+   ЦЕНТРАЛЬНАЯ КОЛОНКА — фиксированная
+   ============================================ */
+#col-center {
+  position: fixed;
+  top: 0;
+  height: 100vh;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: space-between;
-  z-index: 100;
-  background: linear-gradient(
-    to bottom,
-    rgba(10, 10, 10, 0.9) 0%,
-    rgba(10, 10, 10, 0) 100%
-  );
-  pointer-events: none;            /* шапка не мешает hover'у на сетке */
+  z-index: 10;
+  pointer-events: none;
 }
 
-.project-title {
-  font-size: 13px;
-  font-weight: 400;
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
-  color: #ffffff;
+/* ============================================
+   ЛОГОТИП СВЕРХУ
+   ============================================ */
+#project-logo {
+  padding-top: 14px;
 }
 
-.project-meta {
+#logo-svg {
+  height: 40px;
+  width: auto;
+}
+
+/* ============================================
+   НАЗВАНИЕ ПРОЕКТА
+   ============================================ */
+#project-title {
   font-size: 11px;
-  font-weight: 300;
+  font-weight: 400;
   letter-spacing: 0.2em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(0, 0, 0, 0.45);
+  padding-top: 14px;
+  padding-bottom: 14px;
+  text-align: center;
+  width: 100%;
 }
 
 /* ============================================
-   СЕТКА
+   ОБЁРТКА ФОТО + ПОДПИСЬ
    ============================================ */
-.grid {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  display: grid;
-  /* 365 = 25 колонок × ~15 строк (точно покрывает) */
-  grid-template-columns: repeat(25, 1fr);
-  grid-auto-rows: 1fr;
-  gap: 0;                          /* сетка сплошная, как архив */
+#featured-wrap {
+  display: flex;
+  flex-direction: column;
+  opacity: 0;
 }
 
-/* Адаптив: на маленьких экранах меньше колонок */
-@media (max-width: 1200px) {
-  .grid { grid-template-columns: repeat(20, 1fr); }
-}
-@media (max-width: 800px) {
-  .grid { grid-template-columns: repeat(15, 1fr); }
-}
-@media (max-width: 500px) {
-  .grid { grid-template-columns: repeat(10, 1fr); }
+#featured-wrap.is-revealed {
+  opacity: 1;
 }
 
 /* ============================================
-   ЯЧЕЙКА
+   БОЛЬШОЕ ФОТО
    ============================================ */
-.cell {
+#featured {
   position: relative;
+  overflow: hidden;
+  background: #e8e8e8;
+  flex-shrink: 0;
+  width: 100%;
+}
+
+/* Два слоя для crossfade */
+#featured img {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+#featured-a {
+  z-index: 2;
+  opacity: 1;
+}
+
+#featured-b {
+  z-index: 1;
+  opacity: 1;
+}
+
+/* ============================================
+   ШТОРКИ — закрывают фото сверху и снизу
+   ============================================ */
+#featured::before,
+#featured::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: 50%;
+  background: #fff;
+  z-index: 20;
+  transition: none;
+}
+
+/* Верхняя шторка */
+#featured::before {
+  top: 0;
+  transform: translateY(0%);
+}
+
+/* Нижняя шторка */
+#featured::after {
+  top: 50%;
+  transform: translateY(0%);
+}
+
+/* Открытие — шторки уезжают вверх и вниз */
+#featured.is-open::before {
+  transform: translateY(-100%);
+  transition: transform 1.1s cubic-bezier(0.76, 0, 0.24, 1);
+}
+
+#featured.is-open::after {
+  transform: translateY(100%);
+  transition: transform 1.1s cubic-bezier(0.76, 0, 0.24, 1);
+}
+
+/* ============================================
+   ПОДПИСЬ ПОД ФОТО
+   ============================================ */
+#featured-caption {
+  width: 100%;
+  padding: 10px 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+#caption-name {
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.1em;
+  color: rgba(0, 0, 0, 0.55);
+  text-transform: uppercase;
+}
+
+#caption-day {
+  font-size: 11px;
+  font-weight: 300;
+  letter-spacing: 0.12em;
+  color: rgba(0, 0, 0, 0.3);
+}
+
+/* ============================================
+   МАЛЕНЬКАЯ ЯЧЕЙКА В СЕТКЕ
+   ============================================ */
+.cell {
+  position: absolute;
   overflow: hidden;
-  opacity: 0;                      /* стартовая анимация поднимет до 1 */
-  transform: scale(0.92);
-  will-change: transform, opacity, filter;
-  transition: filter 0.6s ease, z-index 0s;
+  cursor: pointer;
+  background: #e0e0e0;
+  transform-origin: center center;
 }
 
 .cell img {
@@ -103,64 +223,41 @@ html, body {
   height: 100%;
   object-fit: cover;
   display: block;
-  filter: grayscale(0.2) brightness(0.55) contrast(1.05);
-  transition: filter 0.5s ease, transform 0.6s ease;
-  pointer-events: none;            /* hover ловим на .cell, не на img */
-}
-
-/* HOVER: ячейка ярче и больше */
-.cell:hover {
-  z-index: 50;
+  opacity: 0.25;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
 }
 
 .cell:hover img {
-  filter: grayscale(0) brightness(1.1) contrast(1);
-  transform: scale(1.15);
+  opacity: 0.75;
 }
 
-/* Когда любая ячейка под наведением — всю сетку немного притеняем */
-.grid:hover .cell:not(:hover) img {
-  filter: grayscale(0.3) brightness(0.4) contrast(1.05);
-}
-
-/* Спецсостояние: автоматически выделенная ячейка (старт) */
-.cell.featured {
-  z-index: 40;
-}
-.cell.featured img {
-  filter: grayscale(0) brightness(1.05) contrast(1);
-  transform: scale(1.18);
+.cell.is-active img {
+  opacity: 0.75;
 }
 
 /* ============================================
-   ПОДПИСЬ
+   АНИМАЦИЯ ПОЯВЛЕНИЯ ЯЧЕЕК
    ============================================ */
-.caption {
-  position: fixed;
-  top: 0;
-  left: 0;
-  pointer-events: none;
-  z-index: 200;
+.cell.cell-hidden {
   opacity: 0;
-  transform: translate(-50%, -120%);  /* появляется над курсором */
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 8px 12px;
-  font-size: 10px;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: #ffffff;
-  white-space: nowrap;
-  text-shadow: 0 0 12px rgba(0, 0, 0, 0.8);
+  transform: scale(0.7);
 }
 
-.caption-index {
-  font-weight: 400;
-  color: rgba(255, 255, 255, 0.6);
+.cell.cell-visible {
+  transition: opacity 0.45s ease, transform 0.45s ease;
+  opacity: 1;
+  transform: scale(1);
 }
 
-.caption-name {
-  font-weight: 300;
-  color: #ffffff;
+/* ============================================
+   ЛОГОТИП СНИЗУ
+   ============================================ */
+#project-logo-bottom {
+  padding-bottom: 14px;
+}
+
+#logo-svg-bottom {
+  height: 40px;
+  width: auto;
 }

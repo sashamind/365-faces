@@ -1,203 +1,433 @@
 /* ============================================
    КОНФИГУРАЦИЯ
    ============================================ */
-const TOTAL = 365;                 // количество ячеек = дней в году
-const grid = document.getElementById('grid');
-const caption = document.getElementById('caption');
-const captionIndex = caption.querySelector('.caption-index');
-const captionName = caption.querySelector('.caption-name');
+const CONFIG = {
+  total: 365,
+  photoAspect: 2 / 3,
+  centerWidthRatio: 0.28,
+  cellGap: 1,
+  fadeDuration: 0.55,
+  stepDelay: 36,
+  scrollDelay: 22,
+};
 
 /* ============================================
-   ИМЕНА (placeholder, потом заменишь на реальные)
+   ЭЛЕМЕНТЫ DOM
    ============================================ */
-const FIRST_NAMES = [
-  'Anna', 'Mark', 'Lena', 'Ivan', 'Sasha', 'Maria', 'Daniel', 'Sofia',
-  'Yulia', 'Artem', 'Nina', 'Oleg', 'Vera', 'Roman', 'Elena', 'Pavel',
-  'Kira', 'Boris', 'Tanya', 'Alex', 'Maya', 'Igor', 'Liza', 'Mikhail'
+const colLeft      = document.getElementById('col-left');
+const colRight     = document.getElementById('col-right');
+const colCenter    = document.getElementById('col-center');
+const gridLeft     = document.getElementById('grid-left');
+const gridRight    = document.getElementById('grid-right');
+const featuredWrap = document.getElementById('featured-wrap');
+const featuredEl   = document.getElementById('featured');
+const imgA         = document.getElementById('featured-a');
+const imgB         = document.getElementById('featured-b');
+const captionName  = document.getElementById('caption-name');
+const captionDay   = document.getElementById('caption-day');
+
+/* ============================================
+   СОСТОЯНИЕ
+   ============================================ */
+let cellsLeft  = [];
+let cellsRight = [];
+let activeSide = null;
+let activeIdx  = -1;
+let isFading   = false;
+let layerTop   = imgA;
+let layerBot   = imgB;
+
+let observerLeft  = null;
+let observerRight = null;
+
+const NAMES = [
+  'Иван', 'Мария', 'Алексей', 'Анна', 'Дмитрий',
+  'Елена', 'Сергей', 'Ольга', 'Андрей', 'Наталья',
 ];
 
-/* Случайное имя для placeholder'а */
-function randomName() {
-  return FIRST_NAMES[Math.floor(Math.random() * FIRST_NAMES.length)];
-}
-
 /* ============================================
-   ИСТОЧНИК ИЗОБРАЖЕНИЯ
-   ============================================
-   Сейчас используем сервис Picsum (случайные фото из интернета).
-   Когда у тебя появятся свои фото в /images:
-   1) положи их в папку /images с именами 001.jpg ... 365.jpg
-   2) замени функцию ниже на:
-      return `images/${String(i).padStart(3, '0')}.jpg`;
-*/
-function getImageUrl(i) {
-  // seed=i — каждое число даёт стабильное, но РАЗНОЕ изображение
-  return `https://picsum.photos/seed/face${i}/300/400`;
-}
-
-/* ============================================
-   FISHER-YATES SHUFFLE
-   Перемешивает массив случайно
+   URL ЗАГЛУШКИ (picsum)
    ============================================ */
-function shuffle(array) {
-  const a = array.slice();
-  for (let i = a.length - 1; i > 0; i--) {
+function getUrl(n, w, h) {
+  return `https://picsum.photos/seed/p${n}/${w}/${h}`;
+}
+
+/* ============================================
+   РАСЧЁТ РАЗМЕРОВ
+   ============================================ */
+function calcLayout() {
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+
+  const centerW = Math.round(vw * CONFIG.centerWidthRatio);
+  const sideW   = Math.round((vw - centerW) / 2);
+
+  const reservedH = 28 + 28 + 40;
+  const maxFeatH  = vh - reservedH;
+
+  let featW = centerW - 32;
+  let featH = Math.round(featW / CONFIG.photoAspect);
+
+  if (featH > maxFeatH) {
+    featH = maxFeatH;
+    featW = Math.round(featH * CONFIG.photoAspect);
+  }
+
+  return { vw, vh, centerW, sideW, featW, featH };
+}
+
+/* ============================================
+   РАСЧЁТ ЯЧЕЙКИ БОКОВОЙ СЕТКИ
+   ============================================ */
+function calcCellSize(sideW) {
+  const cols  = 5;
+  const cellW = Math.floor(sideW / cols);
+  const cellH = Math.round(cellW / CONFIG.photoAspect);
+  return { cols, cellW, cellH };
+}
+
+/* ============================================
+   ПЕРЕМЕШАТЬ МАССИВ
+   ============================================ */
+function shuffleArray(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
+    [arr[i], arr[j]] = [arr[j], arr[i]];
   }
-  return a;
 }
 
 /* ============================================
-   СОЗДАНИЕ СЕТКИ
+   ПОСТРОЕНИЕ СЕТКИ
    ============================================ */
-const indices = Array.from({ length: TOTAL }, (_, i) => i + 1); // 1..365
-const shuffled = shuffle(indices);                              // случайный порядок
+function buildSideGridFromArray(container, indices, cols, cellW, cellH) {
+  container.innerHTML = '';
+  const cells = [];
 
-const cells = [];
+  const rows  = Math.ceil(indices.length / cols);
+  const gridH = rows * cellH;
 
-shuffled.forEach((number) => {
-  const cell = document.createElement('div');
-  cell.className = 'cell';
+  container.style.width  = (cols * cellW) + 'px';
+  container.style.height = gridH + 'px';
 
-  // Сохраняем данные о портрете прямо на элементе
-  cell.dataset.index = number;
-  cell.dataset.name = randomName();
+  indices.forEach((photoNum, i) => {
+    const col = i % cols;
+    const row = Math.floor(i / cols);
 
-  const img = document.createElement('img');
-  img.src = getImageUrl(number);
-  img.alt = `Face ${number}`;
-  img.loading = 'lazy';            // ленивая загрузка — браузер не грузит всё сразу
+    const cell = document.createElement('div');
+    cell.className    = 'cell cell-hidden';
+    cell.style.left   = (col * cellW + CONFIG.cellGap) + 'px';
+    cell.style.top    = (row * cellH + CONFIG.cellGap) + 'px';
+    cell.style.width  = (cellW - CONFIG.cellGap) + 'px';
+    cell.style.height = (cellH - CONFIG.cellGap) + 'px';
+    cell.dataset.num  = photoNum;
+    cell.dataset.day  = photoNum;
 
-  cell.appendChild(img);
-  grid.appendChild(cell);
-  cells.push(cell);
-});
+    const img = document.createElement('img');
+    img.src      = getUrl(photoNum, cellW * 2, cellH * 2);
+    img.alt      = '';
+    img.loading  = 'lazy';
+    img.decoding = 'async';
+
+    cell.appendChild(img);
+    container.appendChild(cell);
+    cells.push(cell);
+  });
+
+  return cells;
+}
 
 /* ============================================
-   СТАРТОВАЯ АНИМАЦИЯ (GSAP)
-   ============================================
-   Все ячейки плавно появляются волной из центра.
-*/
-gsap.to('.cell', {
-  opacity: 1,
-  scale: 1,
-  duration: 1.2,
-  ease: 'power2.out',
-  stagger: {
-    each: 0.003,
-    from: 'random'                 // появление в случайном порядке
+   ПРИМЕНИТЬ LAYOUT
+   ============================================ */
+function applyLayout() {
+  const { centerW, sideW, featW, featH } = calcLayout();
+  const { cols, cellW, cellH } = calcCellSize(sideW);
+
+  colLeft.style.width  = sideW + 'px';
+  colRight.style.width = sideW + 'px';
+
+  colCenter.style.left  = sideW + 'px';
+  colCenter.style.width = centerW + 'px';
+
+  featuredWrap.style.width = featW + 'px';
+  featuredEl.style.height  = featH + 'px';
+
+  const indices = Array.from({ length: CONFIG.total }, (_, i) => i + 1);
+  shuffleArray(indices);
+
+  const leftCount    = Math.ceil(CONFIG.total / 2);
+  const leftIndices  = indices.slice(0, leftCount);
+  const rightIndices = indices.slice(leftCount);
+
+  cellsLeft  = buildSideGridFromArray(gridLeft,  leftIndices,  cols, cellW, cellH);
+  cellsRight = buildSideGridFromArray(gridRight, rightIndices, cols, cellW, cellH);
+}
+
+/* ============================================
+   CROSSFADE
+   ============================================ */
+function showPhoto(num, dayNum) {
+  if (isFading) return;
+  isFading = true;
+
+  const { featW, featH } = calcLayout();
+  const newSrc = getUrl(num, featW * 2, featH * 2);
+
+  layerBot.src = newSrc;
+
+  const doFade = () => {
+    gsap.to(layerTop, {
+      opacity: 0,
+      duration: CONFIG.fadeDuration,
+      ease: 'power2.inOut',
+      onComplete: () => {
+        layerTop.style.zIndex  = '1';
+        layerBot.style.zIndex  = '2';
+        layerTop.style.opacity = '1';
+
+        const tmp = layerTop;
+        layerTop  = layerBot;
+        layerBot  = tmp;
+
+        isFading = false;
+      }
+    });
+
+    captionName.textContent = NAMES[num % NAMES.length];
+    captionDay.textContent  = `${dayNum}/365`;
+  };
+
+  if (layerBot.complete && layerBot.naturalWidth > 0) {
+    doFade();
+  } else {
+    layerBot.onload  = doFade;
+    layerBot.onerror = () => { isFading = false; };
   }
-});
+}
 
 /* ============================================
-   АВТО-ВЫДЕЛЕНИЕ СЛУЧАЙНОЙ ЯЧЕЙКИ
+   СБРОС АКТИВНОЙ ЯЧЕЙКИ
    ============================================ */
-function autoFeature() {
-  const randomCell = cells[Math.floor(Math.random() * cells.length)];
-  randomCell.classList.add('featured');
+function clearActive() {
+  if (activeSide === 'left' && activeIdx >= 0) {
+    cellsLeft[activeIdx]?.classList.remove('is-active');
+  } else if (activeSide === 'right' && activeIdx >= 0) {
+    cellsRight[activeIdx]?.classList.remove('is-active');
+  }
+  activeIdx = -1;
+}
 
-  // Показать подпись по центру этой ячейки
-  const rect = randomCell.getBoundingClientRect();
-  showCaption(
-    rect.left + rect.width / 2,
-    rect.top,
-    randomCell.dataset.index,
-    randomCell.dataset.name
+/* ============================================
+   HOVER
+   ============================================ */
+function attachHoverBoth() {
+  gridLeft.addEventListener('mouseover', (e) => {
+    const cell = e.target.closest('.cell');
+    if (!cell) return;
+
+    clearActive();
+    cell.classList.add('is-active');
+    activeSide = 'left';
+    activeIdx  = cellsLeft.indexOf(cell);
+
+    showPhoto(parseInt(cell.dataset.num), parseInt(cell.dataset.day));
+  });
+
+  gridRight.addEventListener('mouseover', (e) => {
+    const cell = e.target.closest('.cell');
+    if (!cell) return;
+
+    clearActive();
+    cell.classList.add('is-active');
+    activeSide = 'right';
+    activeIdx  = cellsRight.indexOf(cell);
+
+    showPhoto(parseInt(cell.dataset.num), parseInt(cell.dataset.day));
+  });
+}
+
+/* ============================================
+   СЛУЧАЙНОЕ НАЧАЛЬНОЕ ФОТО
+   ============================================ */
+function showRandomPhoto() {
+  const num = Math.floor(Math.random() * CONFIG.total) + 1;
+  const { featW, featH } = calcLayout();
+
+  layerTop.src           = getUrl(num, featW * 2, featH * 2);
+  layerTop.style.opacity = '1';
+  layerTop.style.zIndex  = '2';
+  layerBot.style.zIndex  = '1';
+
+  captionName.textContent = NAMES[num % NAMES.length];
+  captionDay.textContent  = `${num}/365`;
+}
+
+/* ============================================
+   ПОКАЗАТЬ ЯЧЕЙКУ
+   ============================================ */
+function revealCell(cell) {
+  if (!cell.classList.contains('cell-hidden')) return;
+  cell.classList.remove('cell-hidden');
+  cell.classList.add('cell-visible');
+}
+
+/* ============================================
+   ВОЛНОВОЙ ИНДЕКС ЯЧЕЙКИ
+   Чем правее и выше — тем раньше появляется
+   ============================================ */
+function getWaveIndex(cell) {
+  const cols  = 5;
+  const cellW = parseFloat(cell.style.width)  + CONFIG.cellGap;
+  const cellH = parseFloat(cell.style.height) + CONFIG.cellGap;
+  const col   = Math.round(parseFloat(cell.style.left) / cellW);
+  const row   = Math.round(parseFloat(cell.style.top)  / cellH);
+  return row * cols + (cols - 1 - col);
+}
+
+/* ============================================
+   АНИМАЦИЯ ПЕРВОГО ЭКРАНА — СЕТКИ
+   Запускается только после раскрытия шторок
+   ============================================ */
+function animateGrids() {
+  const cols = 5;
+  const vh   = window.innerHeight;
+
+  const visibleLeft = Array.from(gridLeft.querySelectorAll('.cell'))
+    .filter(cell => parseFloat(cell.style.top) < vh);
+
+  const visibleRight = Array.from(gridRight.querySelectorAll('.cell'))
+    .filter(cell => parseFloat(cell.style.top) < vh);
+
+  function revealGroup(cells, startOffset) {
+    cells.forEach(cell => {
+      const waveIdx = getWaveIndex(cell);
+      const delay   = startOffset + waveIdx * CONFIG.stepDelay;
+      setTimeout(() => revealCell(cell), delay);
+    });
+  }
+
+  // Правая сетка стартует первой, левая — чуть позже
+  revealGroup(visibleRight, 0);
+  revealGroup(visibleLeft,  CONFIG.stepDelay * cols);
+}
+
+/* ============================================
+   SCROLL-АНИМАЦИЯ
+   ============================================ */
+function setupScrollAnimation(scrollEl, cells) {
+  const rowMap = new Map();
+
+  cells.forEach(cell => {
+    const cellH = parseFloat(cell.style.height) + CONFIG.cellGap;
+    const row   = Math.round(parseFloat(cell.style.top) / cellH);
+    if (!rowMap.has(row)) rowMap.set(row, []);
+    rowMap.get(row).push(cell);
+  });
+
+  const triggers = new Map();
+
+  rowMap.forEach((rowCells) => {
+    const sorted = [...rowCells].sort((a, b) =>
+      parseFloat(b.style.left) - parseFloat(a.style.left)
+    );
+    triggers.set(sorted[0], rowCells);
+  });
+
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (!entry.isIntersecting) return;
+
+      const triggerCell = entry.target;
+      const rowCells    = triggers.get(triggerCell);
+      if (!rowCells) return;
+
+      const sorted = [...rowCells].sort((a, b) =>
+        parseFloat(b.style.left) - parseFloat(a.style.left)
+      );
+
+      sorted.forEach((cell, i) => {
+        setTimeout(() => revealCell(cell), i * CONFIG.scrollDelay);
+      });
+
+      observer.unobserve(triggerCell);
+    });
+  }, {
+    root: scrollEl,
+    rootMargin: '0px',
+    threshold: 0.1,
+  });
+
+  triggers.forEach((rowCells, triggerCell) => {
+    const top = parseFloat(triggerCell.style.top);
+    if (top >= window.innerHeight) {
+      observer.observe(triggerCell);
+    }
+  });
+
+  return observer;
+}
+
+/* ============================================
+   ЗАПУСК SCROLL-АНИМАЦИИ ДЛЯ ОБЕИХ СЕТОК
+   ============================================ */
+function setupScrollBoth() {
+  if (observerLeft)  observerLeft.disconnect();
+  if (observerRight) observerRight.disconnect();
+
+  observerLeft  = setupScrollAnimation(colLeft,  cellsLeft);
+  observerRight = setupScrollAnimation(colRight, cellsRight);
+}
+
+/* ============================================
+   ЭТАП 1: АНИМАЦИЯ ОТКРЫТИЯ ЦЕНТРАЛЬНОГО ФОТО
+   После завершения шторок — пауза 2с — затем сетка
+   ============================================ */
+function animateFeaturedOpen(onComplete) {
+  // Показываем обёртку
+  featuredWrap.classList.add('is-revealed');
+
+  // Запускаем шторки
+  setTimeout(() => {
+    featuredEl.classList.add('is-open');
+  }, 100);
+
+  // Подпись появляется когда шторки почти разошлись
+  gsap.fromTo(
+    document.getElementById('featured-caption'),
+    { opacity: 0, y: 6 },
+    { opacity: 1, y: 0, duration: 0.5, delay: 0.9, ease: 'power2.out' }
   );
 
-  // Через ~3.5 сек снять выделение и спрятать подпись
+  // 100ms + 1100ms анимация шторок + 2300ms пауза = 3500ms
   setTimeout(() => {
-    randomCell.classList.remove('featured');
-    hideCaption();
+    if (onComplete) onComplete();
   }, 3500);
 }
 
-// Запускаем после того, как сетка успела появиться
-setTimeout(autoFeature, 1800);
-
 /* ============================================
-   ПОДПИСЬ
+   РЕСАЙЗ
    ============================================ */
-function showCaption(x, y, index, name) {
-  captionIndex.textContent = String(index).padStart(3, '0') + ' / 365';
-  captionName.textContent = name;
-  gsap.to(caption, {
-    x: x,
-    y: y,
-    opacity: 1,
-    duration: 0.4,
-    ease: 'power2.out'
-  });
-}
-
-function moveCaption(x, y) {
-  gsap.to(caption, {
-    x: x,
-    y: y,
-    duration: 0.3,
-    ease: 'power2.out'
-  });
-}
-
-function hideCaption() {
-  gsap.to(caption, {
-    opacity: 0,
-    duration: 0.3,
-    ease: 'power2.out'
-  });
-}
-
-/* ============================================
-   HOVER НА ЯЧЕЙКАХ
-   ============================================ */
-cells.forEach((cell) => {
-  cell.addEventListener('mouseenter', (e) => {
-    const rect = cell.getBoundingClientRect();
-    showCaption(
-      rect.left + rect.width / 2,
-      rect.top,
-      cell.dataset.index,
-      cell.dataset.name
-    );
-  });
-
-  cell.addEventListener('mousemove', (e) => {
-    const rect = cell.getBoundingClientRect();
-    moveCaption(rect.left + rect.width / 2, rect.top);
-  });
-
-  cell.addEventListener('mouseleave', () => {
-    hideCaption();
-  });
+let resizeTimer;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => {
+    applyLayout();
+    attachHoverBoth();
+    animateGrids();
+    setupScrollBoth();
+  }, 150);
 });
 
 /* ============================================
-   ЛЁГКИЙ PARALLAX ЭФФЕКТ
-   ============================================
-   Сетка очень мягко смещается за курсором — кинематографичное дыхание.
-*/
-const parallaxStrength = 15;       // сила сдвига в px (чем больше — тем заметнее)
-
-window.addEventListener('mousemove', (e) => {
-  const x = (e.clientX / window.innerWidth - 0.5) * parallaxStrength;
-  const y = (e.clientY / window.innerHeight - 0.5) * parallaxStrength;
-
-  gsap.to(grid, {
-    x: -x,
-    y: -y,
-    duration: 1.2,
-    ease: 'power2.out'
-  });
-});
-
-/* ============================================
-   FLOATING — еле заметное «дыхание» сетки
+   СТАРТ
+   Этап 1: центральное фото (шторки)
+   Этап 2: сетки появляются после паузы
    ============================================ */
-gsap.to(grid, {
-  scale: 1.01,
-  duration: 6,
-  ease: 'sine.inOut',
-  yoyo: true,
-  repeat: -1
+applyLayout();
+attachHoverBoth();
+showRandomPhoto();
+
+animateFeaturedOpen(() => {
+  animateGrids();
+  setupScrollBoth();
 });
