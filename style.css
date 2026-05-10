@@ -1,0 +1,166 @@
+/* ============================================
+   БАЗА
+   ============================================ */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  background: #0a0a0a;            /* почти чёрный, не агрессивный */
+  color: #eaeaea;
+  font-family: 'Inter', sans-serif;
+  font-weight: 300;
+  overflow: hidden;               /* без скролла — сетка вмещается в экран */
+  -webkit-font-smoothing: antialiased;
+  cursor: default;
+}
+
+/* ============================================
+   ШАПКА
+   ============================================ */
+.site-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 80px;
+  padding: 0 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  z-index: 100;
+  background: linear-gradient(
+    to bottom,
+    rgba(10, 10, 10, 0.9) 0%,
+    rgba(10, 10, 10, 0) 100%
+  );
+  pointer-events: none;            /* шапка не мешает hover'у на сетке */
+}
+
+.project-title {
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: #ffffff;
+}
+
+.project-meta {
+  font-size: 11px;
+  font-weight: 300;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* ============================================
+   СЕТКА
+   ============================================ */
+.grid {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  display: grid;
+  /* 365 = 25 колонок × ~15 строк (точно покрывает) */
+  grid-template-columns: repeat(25, 1fr);
+  grid-auto-rows: 1fr;
+  gap: 0;                          /* сетка сплошная, как архив */
+}
+
+/* Адаптив: на маленьких экранах меньше колонок */
+@media (max-width: 1200px) {
+  .grid { grid-template-columns: repeat(20, 1fr); }
+}
+@media (max-width: 800px) {
+  .grid { grid-template-columns: repeat(15, 1fr); }
+}
+@media (max-width: 500px) {
+  .grid { grid-template-columns: repeat(10, 1fr); }
+}
+
+/* ============================================
+   ЯЧЕЙКА
+   ============================================ */
+.cell {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  opacity: 0;                      /* стартовая анимация поднимет до 1 */
+  transform: scale(0.92);
+  will-change: transform, opacity, filter;
+  transition: filter 0.6s ease, z-index 0s;
+}
+
+.cell img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  filter: grayscale(0.2) brightness(0.55) contrast(1.05);
+  transition: filter 0.5s ease, transform 0.6s ease;
+  pointer-events: none;            /* hover ловим на .cell, не на img */
+}
+
+/* HOVER: ячейка ярче и больше */
+.cell:hover {
+  z-index: 50;
+}
+
+.cell:hover img {
+  filter: grayscale(0) brightness(1.1) contrast(1);
+  transform: scale(1.15);
+}
+
+/* Когда любая ячейка под наведением — всю сетку немного притеняем */
+.grid:hover .cell:not(:hover) img {
+  filter: grayscale(0.3) brightness(0.4) contrast(1.05);
+}
+
+/* Спецсостояние: автоматически выделенная ячейка (старт) */
+.cell.featured {
+  z-index: 40;
+}
+.cell.featured img {
+  filter: grayscale(0) brightness(1.05) contrast(1);
+  transform: scale(1.18);
+}
+
+/* ============================================
+   ПОДПИСЬ
+   ============================================ */
+.caption {
+  position: fixed;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  z-index: 200;
+  opacity: 0;
+  transform: translate(-50%, -120%);  /* появляется над курсором */
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 12px;
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #ffffff;
+  white-space: nowrap;
+  text-shadow: 0 0 12px rgba(0, 0, 0, 0.8);
+}
+
+.caption-index {
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.caption-name {
+  font-weight: 300;
+  color: #ffffff;
+}

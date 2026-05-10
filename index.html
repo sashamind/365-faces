@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>365 Faces</title>
+
+  <!-- Подключаем шрифт (тонкая типографика) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400&display=swap"
+    rel="stylesheet"
+  />
+
+  <!-- Наши стили -->
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- ШАПКА -->
+  <header class="site-header">
+    <div class="header-left">
+      <span class="project-title">365 Faces</span>
+    </div>
+    <div class="header-right">
+      <span class="project-meta">A visual archive · 2025</span>
+    </div>
+  </header>
+
+  <!-- СЕТКА ИЗ 365 ИЗОБРАЖЕНИЙ (создаётся через JS) -->
+  <main class="grid" id="grid"></main>
+
+  <!-- ПОДПИСЬ ПРИ HOVER (одна на весь сайт, перемещается за курсором) -->
+  <div class="caption" id="caption">
+    <span class="caption-index">001 / 365</span>
+    <span class="caption-name">Unknown</span>
+  </div>
+
+  <!-- GSAP — библиотека анимаций (через CDN) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+
+  <!-- Наш скрипт -->
+  <script src="script.js"></script>
+</body>
+</html>
