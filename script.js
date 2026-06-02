@@ -486,14 +486,14 @@ function attachEventsBoth() {
    ============================================ */
 function revealCell(cell) {
   if (!cell.classList.contains('cell-hidden')) return;
-
-  cell.style.transform = 'scale(0.7)';
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      cell.style.transform = '';
-      cell.classList.remove('cell-hidden');
-      cell.classList.add('cell-visible');
-    });
+  cell.classList.remove('cell-hidden');
+  cell.classList.add('cell-visible');
+  gsap.from(cell, {
+    opacity: 0,
+    scale: 0.85,
+    duration: 0.35,
+    ease: 'power2.out',
+    clearProps: 'opacity,transform',
   });
 }
 
