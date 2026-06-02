@@ -4,11 +4,14 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>365</title>
+
+  <link rel="icon" href="favicon.svg" type="image/svg+xml" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400&display=swap" rel="stylesheet" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
+<div id="app">
 
   <!-- Левая колонка — скроллится -->
   <div id="col-left">
@@ -18,31 +21,37 @@
   <!-- Центральная колонка — фиксированная -->
   <div id="col-center">
 
-    <!-- Логотип сверху -->
+    <!-- Логотип слева — позиционируется через JS по левому краю фото -->
     <div id="project-logo">
       <img src="logo.svg" alt="Логотип" id="logo-svg" />
+    </div>
+
+    <!-- Логотип справа — позиционируется через JS по правому краю фото -->
+    <div id="project-logo-bottom">
+      <img src="logo2.svg" alt="Логотип 2" id="logo-svg-bottom" />
     </div>
 
     <!-- Обёртка: ширина = ширина фото, задаётся через JS -->
     <div id="featured-wrap">
 
-      <!-- Большое фото -->
+      <!-- Большое фото — два слоя для crossfade -->
       <div id="featured">
         <img id="featured-a" src="" alt="" />
         <img id="featured-b" src="" alt="" />
+        <div id="scrub-overlay"></div>
       </div>
 
-      <!-- Подпись строго под фото, внутри обёртки -->
+      <!-- Подпись строго под фото -->
       <div id="featured-caption">
-        <span id="caption-name">—</span>
-        <span id="caption-day">—/365</span>
-      </div>
+  <span id="caption-name">—</span>
+  <span id="caption-day">
+    <span id="caption-day-num">—/</span><span id="caption-day-total">365</span>
+  </span>
+</div>
 
-    </div>
+      <!-- Точки-индикаторы серии фото -->
+      <div id="series-indicator"></div>
 
-    <!-- Второй логотип снизу -->
-    <div id="project-logo-bottom">
-      <img src="logo2.svg" alt="Логотип 2" id="logo-svg-bottom" />
     </div>
 
   </div>
@@ -52,6 +61,7 @@
     <div id="grid-right"></div>
   </div>
 
+</div><!-- #app -->
   <script src="script.js"></script>
 </body>
 </html>
