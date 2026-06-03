@@ -900,35 +900,28 @@ function setupWheelScroll() {
    КАРУСЕЛЬ — расчёт размеров
    ============================================ */
 function getCarouselMetrics() {
-  const containerW = window.innerWidth;
-  const maxSlideH  = Math.round(window.innerHeight * 0.52);
-
-  // Те же пропорции что и у старого featured-фото
-  const vwRatio = containerW <= 480 ? 0.72 : 0.55;
-  let slideW = Math.round(containerW * vwRatio);
+  const vw      = window.innerWidth;
+  const maxH    = Math.round(window.innerHeight * 0.52);
+  const vwRatio = vw <= 480 ? 0.72 : 0.55;
+  let slideW = Math.round(vw * vwRatio);
   let slideH = Math.round(slideW / CONFIG.photoAspect);
-  if (slideH > maxSlideH) {
-    slideH = maxSlideH;
-    slideW = Math.round(slideH * CONFIG.photoAspect);
-  }
-
-  const peek = Math.floor((containerW - slideW) / 2); // центрирует слайд
-  const gap  = peek + 4; // соседний слайд начинается за правым краем контейнера
-  return { containerW, slideW, slideH, gap, peek };
+  if (slideH > maxH) { slideH = maxH; slideW = Math.round(slideH * CONFIG.photoAspect); }
+  return { slideW, slideH, gap: 16 };
 }
 
 /* ============================================
-   КАРУСЕЛЬ — строим слайды
+   КАРУСЕЛЬ — строим слайды (нативный scroll-snap)
+   Outer имеет точную ширину слайда — браузер
+   сам центрирует и обеспечивает резину на краях
    ============================================ */
 function buildCarousel(series, idx) {
-  const { containerW, slideW, slideH, gap, peek } = getCarouselMetrics();
-
+  const { slideW, slideH, gap } = getCarouselMetrics();
   const outer = document.getElementById('carousel-outer');
-  const track = document.getElementById('carousel-track');
 
+  outer.style.width  = slideW + 'px';
   outer.style.height = slideH + 'px';
-  track.innerHTML    = '';
-  track.style.gap    = gap + 'px';
+  outer.style.gap    = gap + 'px';
+  outer.innerHTML    = '';
 
   series.forEach(src => {
     const slide       = document.createElement('div');
@@ -938,87 +931,54 @@ function buildCarousel(series, idx) {
     const img         = document.createElement('img');
     img.src = src; img.alt = '';
     slide.appendChild(img);
-    track.appendChild(slide);
+    outer.appendChild(slide);
   });
 
-  // Ширина подписи = ширина слайда, центрируем
   const footer = document.getElementById('featured-footer');
   footer.style.width  = slideW + 'px';
   footer.style.margin = '6px auto 0';
 
-  positionCarousel(idx, false);
+  // Без анимации — задать позицию напрямую
+  outer.scrollLeft = idx * (slideW + gap);
 }
 
 /* ============================================
-   КАРУСЕЛЬ — позиционирование трека
+   КАРУСЕЛЬ — прокрутить к слайду
    ============================================ */
 function positionCarousel(idx, animate) {
-  const track = document.getElementById('carousel-track');
-  if (!track) return;
-  const { slideW, gap, peek } = getCarouselMetrics();
-  const offset = peek - idx * (slideW + gap);
-  track.style.transition = animate
-    ? 'transform 0.35s cubic-bezier(0.25, 1, 0.5, 1)'
-    : 'none';
-  track.style.transform = `translateX(${offset}px)`;
+  const outer = document.getElementById('carousel-outer');
+  if (!outer) return;
+  const { slideW, gap } = getCarouselMetrics();
+  const target = idx * (slideW + gap);
+  if (animate) {
+    outer.scrollTo({ left: target, behavior: 'smooth' });
+  } else {
+    outer.scrollLeft = target;
+  }
 }
 
 /* ============================================
-   КАРУСЕЛЬ — свайп пальцем (iOS-стиль)
+   КАРУСЕЛЬ — синхронизируем индикатор со скроллом
    ============================================ */
-function setupCarouselTouch() {
+function setupCarouselScroll() {
   const outer = document.getElementById('carousel-outer');
-  if (!outer || outer._touchReady) return;
-  outer._touchReady = true;
+  if (!outer || outer._scrollReady) return;
+  outer._scrollReady = true;
 
-  let startX       = 0;
-  let startY       = 0;
-  let startOffset  = 0;
-  let isHoriz      = false;
-
-  outer.addEventListener('touchstart', (e) => {
-    startX = e.touches[0].clientX;
-    startY = e.touches[0].clientY;
-    isHoriz = false;
-    const track = document.getElementById('carousel-track');
-    const m = track.style.transform.match(/translateX\((-?[\d.]+)px\)/);
-    startOffset = m ? parseFloat(m[1]) : 0;
-    track.style.transition = 'none';
-  }, { passive: true });
-
-  outer.addEventListener('touchmove', (e) => {
-    const dx = e.touches[0].clientX - startX;
-    const dy = Math.abs(e.touches[0].clientY - startY);
-    if (!isHoriz && Math.abs(dx) > dy + 3) isHoriz = true;
-    if (!isHoriz) return;
-    e.preventDefault();
-
-    const track = document.getElementById('carousel-track');
-    const { slideW, gap, peek } = getCarouselMetrics();
-    const maxOffset = peek;
-    const minOffset = peek - (currentSeries.length - 1) * (slideW + gap);
-    let   newOffset = startOffset + dx;
-
-    // Rubber-band на краях
-    if (newOffset > maxOffset) {
-      newOffset = maxOffset + (newOffset - maxOffset) * 0.25;
-    } else if (newOffset < minOffset) {
-      newOffset = minOffset + (newOffset - minOffset) * 0.25;
-    }
-
-    track.style.transform = `translateX(${newOffset}px)`;
-  }, { passive: false });
-
-  outer.addEventListener('touchend', (e) => {
-    if (!isHoriz) return;
-    const dx = e.changedTouches[0].clientX - startX;
-    if (dx < -40 && currentSeriesIdx < currentSeries.length - 1) {
-      currentSeriesIdx++;
-    } else if (dx > 40 && currentSeriesIdx > 0) {
-      currentSeriesIdx--;
-    }
-    positionCarousel(currentSeriesIdx, true);
-    updateSeriesIndicator();
+  let timer = null;
+  outer.addEventListener('scroll', () => {
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      const { slideW, gap } = getCarouselMetrics();
+      const newIdx = Math.max(0, Math.min(
+        currentSeries.length - 1,
+        Math.round(outer.scrollLeft / (slideW + gap))
+      ));
+      if (newIdx !== currentSeriesIdx) {
+        currentSeriesIdx = newIdx;
+        updateSeriesIndicator();
+      }
+    }, 80);
   }, { passive: true });
 }
 
@@ -1044,7 +1004,7 @@ async function init() {
 
   if (isMobile()) {
     attachMobileEvents();
-    setupCarouselTouch();
+    setupCarouselScroll();
   } else {
     attachEventsBoth();
   }

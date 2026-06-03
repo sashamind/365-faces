@@ -305,15 +305,6 @@ html, body {
    ============================================ */
 #carousel-outer {
   display: none;
-  overflow: hidden;
-  position: relative;
-}
-
-#carousel-track {
-  display: flex;
-  will-change: transform;
-  user-select: none;
-  -webkit-user-select: none;
 }
 
 .carousel-slide {
@@ -321,6 +312,7 @@ html, body {
   overflow: hidden;
   background: #e8e8e8;
   border-radius: 6px;
+  scroll-snap-align: start;
 }
 
 .carousel-slide img {
@@ -410,11 +402,20 @@ html, body {
     display: none;
   }
 
+  /* Нативный scroll-snap: браузер сам центрирует и даёт резину */
   #carousel-outer {
-    display: block;
+    display: flex;
+    overflow-x: scroll;
+    overflow-y: hidden;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    margin: 0 auto; /* центрируем внутри featured-wrap */
   }
 
-  /* featured-wrap растягивается на всю ширину под карусель */
+  #carousel-outer::-webkit-scrollbar { display: none; }
+
+  /* featured-wrap полная ширина — карусель внутри центруется через margin: auto */
   #featured-wrap {
     width: 100% !important;
     margin: 0 !important;
