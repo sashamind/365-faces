@@ -442,6 +442,10 @@ html, body {
   #grid-mobile .cell img {
     opacity: 0.35;
   }
+
+  #grid-mobile .cell.is-active img {
+    opacity: 1;
+  }
 }
 
 @media (max-width: 480px) {
