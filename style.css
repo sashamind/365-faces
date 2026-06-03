@@ -327,9 +327,18 @@ html, body {
     bottom: auto !important;
     left: 0 !important;
     width: 100% !important;
-    height: 63vh;
+    height: 62vh;
     flex-shrink: 0;
-    padding-top: 48px;
+  }
+
+  #featured-wrap {
+    margin-top: 52px !important;
+  }
+
+  #project-logo img,
+  #project-logo-bottom img {
+    height: 20px !important;
+    width: auto !important;
   }
 
   #col-bottom {
