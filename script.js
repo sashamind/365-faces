@@ -902,14 +902,18 @@ function setupWheelScroll() {
 function getCarouselMetrics() {
   const containerW = window.innerWidth;
   const maxSlideH  = Math.round(window.innerHeight * 0.52);
-  let slideW = Math.round(containerW * 0.78);
+
+  // Те же пропорции что и у старого featured-фото
+  const vwRatio = containerW <= 480 ? 0.72 : 0.55;
+  let slideW = Math.round(containerW * vwRatio);
   let slideH = Math.round(slideW / CONFIG.photoAspect);
   if (slideH > maxSlideH) {
     slideH = maxSlideH;
     slideW = Math.round(slideH * CONFIG.photoAspect);
   }
-  const gap  = 10;
-  const peek = Math.floor((containerW - slideW) / 2);
+
+  const peek = Math.floor((containerW - slideW) / 2); // центрирует слайд
+  const gap  = peek + 4; // соседний слайд начинается за правым краем контейнера
   return { containerW, slideW, slideH, gap, peek };
 }
 
