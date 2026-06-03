@@ -457,80 +457,79 @@ function setupScrubbing() {
   const scrubOverlay = document.getElementById('scrub-overlay');
   if (!scrubOverlay) return;
 
-  scrubOverlay.addEventListener('mousemove', (e) => {
-    if (currentSeries.length <= 1) return;
+  // Десктоп: скрабинг позицией мыши
+  if (!('ontouchstart' in window)) {
+    scrubOverlay.addEventListener('mousemove', (e) => {
+      if (currentSeries.length <= 1) return;
+      const rect   = scrubOverlay.getBoundingClientRect();
+      const ratio  = (e.clientX - rect.left) / rect.width;
+      const newIdx = Math.min(Math.floor(ratio * currentSeries.length), currentSeries.length - 1);
+      if (newIdx !== currentSeriesIdx) {
+        currentSeriesIdx = newIdx;
+        showPhotoSrc(currentSeries[currentSeriesIdx]);
+        updateSeriesIndicator();
+      }
+    });
 
-    const rect   = scrubOverlay.getBoundingClientRect();
-    const ratio  = (e.clientX - rect.left) / rect.width;
-    const newIdx = Math.min(
-      Math.floor(ratio * currentSeries.length),
-      currentSeries.length - 1
-    );
+    scrubOverlay.addEventListener('mouseleave', () => {
+      if (currentSeriesIdx !== 0) {
+        currentSeriesIdx = 0;
+        showPhotoSrc(currentSeries[0]);
+        updateSeriesIndicator();
+      }
+    });
+  }
 
-    if (newIdx !== currentSeriesIdx) {
-      currentSeriesIdx = newIdx;
-      showPhotoSrc(currentSeries[currentSeriesIdx]);
-      updateSeriesIndicator();
-    }
-  });
-
-  scrubOverlay.addEventListener('mouseleave', () => {
-    if (currentSeriesIdx !== 0) {
-      currentSeriesIdx = 0;
-      showPhotoSrc(currentSeries[0]);
-      updateSeriesIndicator();
-    }
-  });
-
-  // Горизонтальный свайп тачпадом
+  // Десктоп: горизонтальный свайп тачпадом
   let accumX = 0;
   scrubOverlay.addEventListener('wheel', (e) => {
     if (currentSeries.length <= 1) return;
     e.preventDefault();
-
     accumX += e.deltaX;
     if (Math.abs(accumX) < 40) return;
-
     currentSeriesIdx = accumX > 0
       ? Math.min(currentSeriesIdx + 1, currentSeries.length - 1)
       : Math.max(currentSeriesIdx - 1, 0);
     accumX = 0;
-
     showPhotoSrc(currentSeries[currentSeriesIdx]);
     updateSeriesIndicator();
   }, { passive: false });
 
-  // Свайп пальцем на мобильном
-  let touchStartX = null;
-  let accumTouch  = 0;
+  // Мобайл: свайп пальцем — переключение при отпускании
+  let touchStartX   = null;
+  let touchStartY   = null;
+  let swipeIsHoriz  = false;
 
   scrubOverlay.addEventListener('touchstart', (e) => {
-    touchStartX = e.touches[0].clientX;
-    accumTouch  = 0;
+    touchStartX  = e.touches[0].clientX;
+    touchStartY  = e.touches[0].clientY;
+    swipeIsHoriz = false;
   }, { passive: true });
 
   scrubOverlay.addEventListener('touchmove', (e) => {
-    if (touchStartX === null || currentSeries.length <= 1) return;
-    e.preventDefault();
-
-    const dx   = touchStartX - e.touches[0].clientX;
-    touchStartX = e.touches[0].clientX;
-    accumTouch += dx;
-
-    if (Math.abs(accumTouch) < 40) return;
-
-    currentSeriesIdx = accumTouch > 0
-      ? Math.min(currentSeriesIdx + 1, currentSeries.length - 1)
-      : Math.max(currentSeriesIdx - 1, 0);
-    accumTouch = 0;
-
-    showPhotoSrc(currentSeries[currentSeriesIdx]);
-    updateSeriesIndicator();
+    if (touchStartX === null) return;
+    const dx = Math.abs(e.touches[0].clientX - touchStartX);
+    const dy = Math.abs(e.touches[0].clientY - touchStartY);
+    if (dx > dy + 5) {
+      swipeIsHoriz = true;
+      e.preventDefault(); // не скроллим страницу при горизонтальном свайпе
+    }
   }, { passive: false });
 
-  scrubOverlay.addEventListener('touchend', () => {
-    touchStartX = null;
-    accumTouch  = 0;
+  scrubOverlay.addEventListener('touchend', (e) => {
+    if (touchStartX === null || !swipeIsHoriz || currentSeries.length <= 1) {
+      touchStartX = null;
+      return;
+    }
+    const deltaX = touchStartX - e.changedTouches[0].clientX;
+    touchStartX  = null;
+    swipeIsHoriz = false;
+    if (Math.abs(deltaX) < 50) return; // слишком короткий — игнорируем
+    currentSeriesIdx = deltaX > 0
+      ? Math.min(currentSeriesIdx + 1, currentSeries.length - 1)
+      : Math.max(currentSeriesIdx - 1, 0);
+    showPhotoSrc(currentSeries[currentSeriesIdx]);
+    updateSeriesIndicator();
   }, { passive: true });
 }
 
