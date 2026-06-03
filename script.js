@@ -9,7 +9,7 @@ const CONFIG = {
   fadeDuration:     0.4,
   stepDelay:        36,
   scrollDelay:      22,
-  hoverDelay:       300,
+  hoverDelay:       1000,
 };
 
 /* ============================================
@@ -53,8 +53,9 @@ const logoRight    = document.getElementById('project-logo-bottom');
 /* ============================================
    СОСТОЯНИЕ
    ============================================ */
-let cellsLeft  = [];
-let cellsRight = [];
+let cellsLeft   = [];
+let cellsRight  = [];
+let cellsMobile = [];
 let activeSide = null;
 let activeIdx  = -1;
 
@@ -81,6 +82,13 @@ const preloadCache = {};
 
 // Флаг первого показа
 let isFirstLoad = true;
+
+/* ============================================
+   ОПРЕДЕЛЕНИЕ МОБИЛЬНОГО УСТРОЙСТВА
+   ============================================ */
+function isMobile() {
+  return window.innerWidth <= 900;
+}
 
 /* ============================================
    РАСЧЁТ LAYOUT
@@ -183,6 +191,8 @@ function buildSideGridFromArray(container, indices, cols, cellW, cellH) {
    ПРИМЕНИТЬ LAYOUT — расставить все элементы
    ============================================ */
 function applyLayout() {
+  if (isMobile()) { applyMobileLayout(); return; }
+
   const { centerW, sideW, featW, featH } = calcLayout();
   const { cols, cellW, cellH } = calcCellSize(sideW);
 
@@ -213,6 +223,79 @@ function applyLayout() {
 
   cellsLeft  = buildSideGridFromArray(gridLeft,  leftIndices,  cols, cellW, cellH);
   cellsRight = buildSideGridFromArray(gridRight, rightIndices, cols, cellW, cellH);
+}
+
+/* ============================================
+   МОБИЛЬНЫЙ LAYOUT
+   ============================================ */
+function applyMobileLayout() {
+  colCenter.style.left   = '';
+  colCenter.style.width  = '';
+  featuredEl.style.height = '';
+  buildMobileGrid();
+}
+
+/* ============================================
+   МОБИЛЬНАЯ СЕТКА — 2 ряда, горизонтальный скролл
+   ============================================ */
+function buildMobileGrid() {
+  const colBottom  = document.getElementById('col-bottom');
+  const gridEl     = document.getElementById('grid-mobile');
+  const gap        = 8;
+  const containerH = colBottom.offsetHeight || Math.round(window.innerHeight * 0.37);
+  const cellH      = Math.floor((containerH - gap * 3) / 2);
+  const cellW      = Math.round(cellH * CONFIG.photoAspect);
+
+  gridEl.innerHTML = '';
+  gridEl.style.gridAutoColumns   = cellW + 'px';
+  gridEl.style.gridTemplateRows  = `repeat(2, ${cellH}px)`;
+
+  const indices = Array.from({ length: CONFIG.total }, (_, i) => i + 1);
+  shuffleArray(indices);
+
+  cellsMobile = indices.map(photoNum => {
+    const cell       = document.createElement('div');
+    cell.className   = 'cell cell-hidden';
+    cell.dataset.num = photoNum;
+    cell.dataset.src = `https://picsum.photos/seed/${photoNum * 100 + 1}/${cellW * 2}/${cellH * 2}`;
+
+    const img    = document.createElement('img');
+    img.alt      = '';
+    img.decoding = 'async';
+
+    cell.appendChild(img);
+    gridEl.appendChild(cell);
+    return cell;
+  });
+}
+
+/* ============================================
+   МОБИЛЬНЫЕ СОБЫТИЯ — тап меняет фото
+   ============================================ */
+function attachMobileEvents() {
+  const colBottom = document.getElementById('col-bottom');
+  colBottom.addEventListener('click', (e) => {
+    const cell = e.target.closest('.cell');
+    if (!cell) return;
+    showPerson(parseInt(cell.dataset.num));
+  });
+}
+
+/* ============================================
+   МОБИЛЬНАЯ АНИМАЦИЯ СЕТКИ
+   IntersectionObserver по горизонтальному скроллу
+   ============================================ */
+function animateMobileGrid() {
+  const colBottom = document.getElementById('col-bottom');
+  const observer  = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (!entry.isIntersecting) return;
+      loadAndRevealCell(entry.target);
+      observer.unobserve(entry.target);
+    });
+  }, { root: colBottom, threshold: 0.1 });
+
+  cellsMobile.forEach(cell => observer.observe(cell));
 }
 
 /* ============================================
@@ -391,7 +474,6 @@ function setupScrubbing() {
     }
   });
 
-  // Уходит мышь — возврат к первому фото серии
   scrubOverlay.addEventListener('mouseleave', () => {
     if (currentSeriesIdx !== 0) {
       currentSeriesIdx = 0;
@@ -399,6 +481,24 @@ function setupScrubbing() {
       updateSeriesIndicator();
     }
   });
+
+  // Горизонтальный свайп тачпадом
+  let accumX = 0;
+  scrubOverlay.addEventListener('wheel', (e) => {
+    if (currentSeries.length <= 1) return;
+    e.preventDefault();
+
+    accumX += e.deltaX;
+    if (Math.abs(accumX) < 40) return;
+
+    currentSeriesIdx = accumX > 0
+      ? Math.min(currentSeriesIdx + 1, currentSeries.length - 1)
+      : Math.max(currentSeriesIdx - 1, 0);
+    accumX = 0;
+
+    showPhotoSrc(currentSeries[currentSeriesIdx]);
+    updateSeriesIndicator();
+  }, { passive: false });
 }
 
 /* ============================================
@@ -437,7 +537,6 @@ function attachEventsBoth() {
       const cell = e.target.closest('.cell');
       if (cell === lastCell) return;
 
-      // Убираем подсветку с предыдущей ячейки
       if (lastCell) {
         lastCell.classList.remove('is-active');
         clearTimeout(hoverTimer);
@@ -450,10 +549,8 @@ function attachEventsBoth() {
       activeSide = side;
       activeIdx  = cells.indexOf(cell);
 
-      // Предзагружаем серию при наведении
       preloadSeries(parseInt(cell.dataset.num));
 
-      // Показываем человека с задержкой hoverDelay
       hoverTimer = setTimeout(() => {
         if (lastCell === cell) showPerson(parseInt(cell.dataset.num));
       }, CONFIG.hoverDelay);
@@ -468,7 +565,6 @@ function attachEventsBoth() {
       if (activeSide === side) { activeIdx = -1; activeSide = null; }
     });
 
-    // Клик — показываем сразу без задержки
     col.addEventListener('click', (e) => {
       const cell = e.target.closest('.cell');
       if (!cell) return;
@@ -488,13 +584,6 @@ function revealCell(cell) {
   if (!cell.classList.contains('cell-hidden')) return;
   cell.classList.remove('cell-hidden');
   cell.classList.add('cell-visible');
-  gsap.from(cell, {
-    opacity: 0,
-    scale: 0.85,
-    duration: 0.35,
-    ease: 'power2.out',
-    clearProps: 'opacity,transform',
-  });
 }
 
 /* ============================================
@@ -685,11 +774,20 @@ function animateFeaturedOpen(onComplete) {
   featuredWrap.classList.add('is-revealed');
   setTimeout(() => featuredEl.classList.add('is-open'), 100);
 
-  // Подпись появляется после шторок
   gsap.fromTo(
     document.getElementById('featured-caption'),
     { opacity: 0, y: 6 },
     { opacity: 1, y: 0, duration: 0.5, delay: 0.9, ease: 'power2.out' }
+  );
+
+  gsap.fromTo(logoLeft,
+    { opacity: 0, y: -8 },
+    { opacity: 1, y: 0, duration: 0.6, delay: 0.7, ease: 'power2.out' }
+  );
+
+  gsap.fromTo(logoRight,
+    { opacity: 0, y: 8 },
+    { opacity: 1, y: 0, duration: 0.6, delay: 0.7, ease: 'power2.out' }
   );
 
   setTimeout(() => { if (onComplete) onComplete(); }, 1200);
@@ -704,8 +802,12 @@ function handleResize() {
   clearTimeout(resizeTimer);
   resizeTimer = setTimeout(() => {
     applyLayout();
-    setupScrollBoth();
-    animateGrids();
+    if (isMobile()) {
+      animateMobileGrid();
+    } else {
+      setupScrollBoth();
+      animateGrids();
+    }
   }, 200);
 }
 
@@ -747,27 +849,27 @@ function setupWheelScroll() {
    ИНИЦИАЛИЗАЦИЯ — главная функция запуска
    ============================================ */
 async function init() {
-  // 1. Строим данные
   PEOPLE_DATA = buildPeopleData();
-
-  // 2. Раскладываем layout
   applyLayout();
-
-  // 3. Грузим стартовое фото
   await loadFeaturedPhoto();
 
-  // 4. Открываем шторки, потом запускаем сетки
   animateFeaturedOpen(() => {
-    animateGrids();
-    setupScrollBoth();
+    if (isMobile()) {
+      animateMobileGrid();
+    } else {
+      animateGrids();
+      setupScrollBoth();
+    }
   });
 
-  // 5. Вешаем все события
-  attachEventsBoth();
+  if (isMobile()) {
+    attachMobileEvents();
+  } else {
+    attachEventsBoth();
+  }
+
   setupScrubbing();
   setupKeyboard();
-
-  // 6. Следим за resize
   window.addEventListener('resize', handleResize);
 }
 
