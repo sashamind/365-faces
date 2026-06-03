@@ -403,7 +403,13 @@ function showPerson(personId) {
   currentSeriesIdx = 0;
 
   updateCaption(person.name, personId);
-  showPhotoSrc(currentSeries[0]);
+
+  if (isMobile()) {
+    buildCarousel(currentSeries, 0);
+  } else {
+    showPhotoSrc(currentSeries[0]);
+  }
+
   updateSeriesIndicator();
 }
 
@@ -770,15 +776,22 @@ function loadFeaturedPhoto() {
     currentSeries    = PEOPLE_DATA[num].series;
     currentSeriesIdx = 0;
 
-    // Готовим верхний слой
-    layerTop.style.opacity = '0';
-    layerTop.style.zIndex  = '2';
-    layerBot.style.zIndex  = '1';
-
-    // Подпись
     captionName.textContent = PEOPLE_DATA[num].name;
     document.getElementById('caption-day-num').textContent   = `${num}/`;
     document.getElementById('caption-day-total').textContent = '365';
+
+    // Мобайл: строим карусель, crossfade не нужен
+    if (isMobile()) {
+      buildCarousel(currentSeries, 0);
+      updateSeriesIndicator();
+      resolve();
+      return;
+    }
+
+    // Десктоп: crossfade слои
+    layerTop.style.opacity = '0';
+    layerTop.style.zIndex  = '2';
+    layerBot.style.zIndex  = '1';
 
     layerTop.onload = () => {
       layerTop.style.opacity = '1';
@@ -788,7 +801,6 @@ function loadFeaturedPhoto() {
     layerTop.onerror = () => resolve();
     layerTop.src     = currentSeries[0];
 
-    // Если уже в кэше браузера
     if (layerTop.complete && layerTop.naturalWidth > 0) {
       layerTop.style.opacity = '1';
       updateSeriesIndicator();
@@ -801,26 +813,31 @@ function loadFeaturedPhoto() {
    ОТКРЫТИЕ ШТОРОК НА ЦЕНТРАЛЬНОМ ФОТО
    ============================================ */
 function animateFeaturedOpen(onComplete) {
-  featuredWrap.classList.add('is-revealed');
-  setTimeout(() => featuredEl.classList.add('is-open'), 100);
+  const mobile = isMobile();
+  const delay  = mobile ? 0.1 : 0.7;
+
+  if (!mobile) {
+    featuredWrap.classList.add('is-revealed');
+    setTimeout(() => featuredEl.classList.add('is-open'), 100);
+  }
 
   gsap.fromTo(
     document.getElementById('featured-footer'),
     { opacity: 0, y: 6 },
-    { opacity: 1, y: 0, duration: 0.5, delay: 0.9, ease: 'power2.out' }
+    { opacity: 1, y: 0, duration: 0.5, delay: mobile ? 0.2 : 0.9, ease: 'power2.out' }
   );
 
   gsap.fromTo(logoLeft,
     { opacity: 0, y: -8 },
-    { opacity: 1, y: 0, duration: 0.6, delay: 0.7, ease: 'power2.out' }
+    { opacity: 1, y: 0, duration: 0.6, delay, ease: 'power2.out' }
   );
 
   gsap.fromTo(logoRight,
     { opacity: 0, y: 8 },
-    { opacity: 1, y: 0, duration: 0.6, delay: 0.7, ease: 'power2.out' }
+    { opacity: 1, y: 0, duration: 0.6, delay, ease: 'power2.out' }
   );
 
-  setTimeout(() => { if (onComplete) onComplete(); }, 1200);
+  setTimeout(() => { if (onComplete) onComplete(); }, mobile ? 500 : 1200);
 }
 
 /* ============================================
@@ -834,6 +851,7 @@ function handleResize() {
     applyLayout();
     if (isMobile()) {
       animateMobileGrid();
+      if (currentSeries.length > 0) buildCarousel(currentSeries, currentSeriesIdx);
     } else {
       setupScrollBoth();
       animateGrids();
@@ -876,6 +894,128 @@ function setupWheelScroll() {
 }
 
 /* ============================================
+   КАРУСЕЛЬ — расчёт размеров
+   ============================================ */
+function getCarouselMetrics() {
+  const containerW = window.innerWidth;
+  const maxSlideH  = Math.round(window.innerHeight * 0.52);
+  let slideW = Math.round(containerW * 0.78);
+  let slideH = Math.round(slideW / CONFIG.photoAspect);
+  if (slideH > maxSlideH) {
+    slideH = maxSlideH;
+    slideW = Math.round(slideH * CONFIG.photoAspect);
+  }
+  const gap  = 10;
+  const peek = Math.floor((containerW - slideW) / 2);
+  return { containerW, slideW, slideH, gap, peek };
+}
+
+/* ============================================
+   КАРУСЕЛЬ — строим слайды
+   ============================================ */
+function buildCarousel(series, idx) {
+  const { containerW, slideW, slideH, gap, peek } = getCarouselMetrics();
+
+  const outer = document.getElementById('carousel-outer');
+  const track = document.getElementById('carousel-track');
+
+  outer.style.height = slideH + 'px';
+  track.innerHTML    = '';
+  track.style.gap    = gap + 'px';
+
+  series.forEach(src => {
+    const slide       = document.createElement('div');
+    slide.className   = 'carousel-slide';
+    slide.style.width  = slideW + 'px';
+    slide.style.height = slideH + 'px';
+    const img         = document.createElement('img');
+    img.src = src; img.alt = '';
+    slide.appendChild(img);
+    track.appendChild(slide);
+  });
+
+  // Ширина подписи = ширина слайда, центрируем
+  const footer = document.getElementById('featured-footer');
+  footer.style.width  = slideW + 'px';
+  footer.style.margin = '6px auto 0';
+
+  positionCarousel(idx, false);
+}
+
+/* ============================================
+   КАРУСЕЛЬ — позиционирование трека
+   ============================================ */
+function positionCarousel(idx, animate) {
+  const track = document.getElementById('carousel-track');
+  if (!track) return;
+  const { slideW, gap, peek } = getCarouselMetrics();
+  const offset = peek - idx * (slideW + gap);
+  track.style.transition = animate
+    ? 'transform 0.35s cubic-bezier(0.25, 1, 0.5, 1)'
+    : 'none';
+  track.style.transform = `translateX(${offset}px)`;
+}
+
+/* ============================================
+   КАРУСЕЛЬ — свайп пальцем (iOS-стиль)
+   ============================================ */
+function setupCarouselTouch() {
+  const outer = document.getElementById('carousel-outer');
+  if (!outer || outer._touchReady) return;
+  outer._touchReady = true;
+
+  let startX       = 0;
+  let startY       = 0;
+  let startOffset  = 0;
+  let isHoriz      = false;
+
+  outer.addEventListener('touchstart', (e) => {
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+    isHoriz = false;
+    const track = document.getElementById('carousel-track');
+    const m = track.style.transform.match(/translateX\((-?[\d.]+)px\)/);
+    startOffset = m ? parseFloat(m[1]) : 0;
+    track.style.transition = 'none';
+  }, { passive: true });
+
+  outer.addEventListener('touchmove', (e) => {
+    const dx = e.touches[0].clientX - startX;
+    const dy = Math.abs(e.touches[0].clientY - startY);
+    if (!isHoriz && Math.abs(dx) > dy + 3) isHoriz = true;
+    if (!isHoriz) return;
+    e.preventDefault();
+
+    const track = document.getElementById('carousel-track');
+    const { slideW, gap, peek } = getCarouselMetrics();
+    const maxOffset = peek;
+    const minOffset = peek - (currentSeries.length - 1) * (slideW + gap);
+    let   newOffset = startOffset + dx;
+
+    // Rubber-band на краях
+    if (newOffset > maxOffset) {
+      newOffset = maxOffset + (newOffset - maxOffset) * 0.25;
+    } else if (newOffset < minOffset) {
+      newOffset = minOffset + (newOffset - minOffset) * 0.25;
+    }
+
+    track.style.transform = `translateX(${newOffset}px)`;
+  }, { passive: false });
+
+  outer.addEventListener('touchend', (e) => {
+    if (!isHoriz) return;
+    const dx = e.changedTouches[0].clientX - startX;
+    if (dx < -40 && currentSeriesIdx < currentSeries.length - 1) {
+      currentSeriesIdx++;
+    } else if (dx > 40 && currentSeriesIdx > 0) {
+      currentSeriesIdx--;
+    }
+    positionCarousel(currentSeriesIdx, true);
+    updateSeriesIndicator();
+  }, { passive: true });
+}
+
+/* ============================================
    ИНИЦИАЛИЗАЦИЯ — главная функция запуска
    ============================================ */
 async function init() {
@@ -894,6 +1034,7 @@ async function init() {
 
   if (isMobile()) {
     attachMobileEvents();
+    setupCarouselTouch();
   } else {
     attachEventsBoth();
   }
