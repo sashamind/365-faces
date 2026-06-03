@@ -21,14 +21,14 @@
   <!-- Центральная колонка — фиксированная -->
   <div id="col-center">
 
-    <!-- Логотип слева — позиционируется через JS по левому краю фото -->
-    <div id="project-logo">
-      <img src="logo.svg" alt="Логотип" id="logo-svg" />
-    </div>
-
-    <!-- Логотип справа — позиционируется через JS по правому краю фото -->
-    <div id="project-logo-bottom">
-      <img src="logo2.svg" alt="Логотип 2" id="logo-svg-bottom" />
+    <!-- Шапка с логотипами — на мобайле отдельная строка над фото -->
+    <div id="logos-header">
+      <div id="project-logo">
+        <img src="logo.svg" alt="Логотип" id="logo-svg" />
+      </div>
+      <div id="project-logo-bottom">
+        <img src="logo2.svg" alt="Логотип 2" id="logo-svg-bottom" />
+      </div>
     </div>
 
     <!-- Обёртка: ширина = ширина фото, задаётся через JS -->
@@ -41,16 +41,16 @@
         <div id="scrub-overlay"></div>
       </div>
 
-      <!-- Подпись строго под фото -->
-      <div id="featured-caption">
-  <span id="caption-name">—</span>
-  <span id="caption-day">
-    <span id="caption-day-num">—/</span><span id="caption-day-total">365</span>
-  </span>
-</div>
-
-      <!-- Точки-индикаторы серии фото -->
-      <div id="series-indicator"></div>
+      <!-- Подпись и точки серии в одной строке под фото -->
+      <div id="featured-footer">
+        <div id="featured-caption">
+          <span id="caption-name">—</span>
+          <span id="caption-day">
+            <span id="caption-day-num">—/</span><span id="caption-day-total">365</span>
+          </span>
+        </div>
+        <div id="series-indicator"></div>
+      </div>
 
     </div>
 

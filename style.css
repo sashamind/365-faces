@@ -251,6 +251,14 @@ html, body {
 /* ============================================
    ЛОГОТИПЫ
    ============================================ */
+
+/* Шапка с логотипами — на десктопе абсолютный оверлей */
+#logos-header {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
 #project-logo,
 #project-logo-bottom {
   position: absolute;
@@ -327,18 +335,65 @@ html, body {
     bottom: auto !important;
     left: 0 !important;
     width: 100% !important;
-    height: 62vh;
+    height: auto;
     flex-shrink: 0;
+    justify-content: flex-start;
   }
 
-  #featured-wrap {
-    margin-top: 52px !important;
+  /* Шапка с логотипами — строка над фото, выровнена по его краям */
+  #logos-header {
+    position: relative !important;
+    inset: auto !important;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 55vw;
+    margin: 10px auto 6px;
+    pointer-events: auto;
+  }
+
+  #project-logo,
+  #project-logo-bottom {
+    position: static !important;
+    top: auto !important;
+    bottom: auto !important;
+    left: auto !important;
+    right: auto !important;
+    display: block;
   }
 
   #project-logo img,
   #project-logo-bottom img {
     height: 20px !important;
     width: auto !important;
+  }
+
+  #featured-wrap {
+    width: 55vw !important;
+    margin: 0 auto !important;
+  }
+
+  #featured {
+    aspect-ratio: 2 / 3;
+    height: auto !important;
+  }
+
+  /* Подпись и точки в одну строку */
+  #featured-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 5px 0;
+    width: 100%;
+  }
+
+  #featured-caption {
+    margin-top: 0;
+  }
+
+  #series-indicator {
+    margin-top: 0;
+    justify-content: flex-end;
   }
 
   #col-bottom {
@@ -352,40 +407,19 @@ html, body {
 
   #col-bottom::-webkit-scrollbar { display: none; }
 
-  #featured {
-    aspect-ratio: 2 / 3;
-    height: auto !important;
-  }
-
-  #featured-wrap {
-    width: 55vw !important;
-    margin: 0 auto;
-  }
-
   /* Ячейки в мобильной сетке всегда видны */
   #grid-mobile .cell img {
     opacity: 1;
-  }
-
-  /* Логотипы: оба сверху по углам */
-  #project-logo {
-    right: auto;
-    left: 16px;
-    justify-content: flex-start;
-  }
-
-  #project-logo-bottom {
-    top: 16px;
-    bottom: auto;
-    left: auto;
-    right: 16px;
-    justify-content: flex-end;
   }
 }
 
 @media (max-width: 480px) {
   #featured-wrap {
     width: 72vw !important;
+  }
+
+  #logos-header {
+    width: 72vw;
   }
 
   #caption-name {
