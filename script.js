@@ -244,7 +244,7 @@ function applyMobileLayout() {
 function buildMobileGrid() {
   const colBottom  = document.getElementById('col-bottom');
   const gridEl     = document.getElementById('grid-mobile');
-  const gap        = 8;
+  const gap        = 4;
   const containerH = colBottom.offsetHeight || Math.round(window.innerHeight * 0.37);
   const cellH      = Math.floor((containerH - gap * 3) / 2);
   const cellW      = Math.round(cellH * CONFIG.photoAspect);
@@ -902,7 +902,7 @@ function setupWheelScroll() {
 function getCarouselMetrics() {
   const vw      = window.innerWidth;
   const maxH    = Math.round(window.innerHeight * 0.52);
-  const vwRatio = vw <= 480 ? 0.72 : 0.55;
+  const vwRatio = vw <= 480 ? 0.80 : 0.65;
   let slideW = Math.round(vw * vwRatio);
   let slideH = Math.round(slideW / CONFIG.photoAspect);
   if (slideH > maxH) { slideH = maxH; slideW = Math.round(slideH * CONFIG.photoAspect); }
@@ -934,11 +934,13 @@ function buildCarousel(series, idx) {
     outer.appendChild(slide);
   });
 
-  const footer = document.getElementById('featured-footer');
+  // Логотипы и подпись выравниваем по ширине фото
+  const footer  = document.getElementById('featured-footer');
+  const logoHdr = document.getElementById('logos-header');
   footer.style.width  = slideW + 'px';
   footer.style.margin = '6px auto 0';
+  logoHdr.style.width = slideW + 'px';
 
-  // Без анимации — задать позицию напрямую
   outer.scrollLeft = idx * (slideW + gap);
 }
 

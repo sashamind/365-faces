@@ -311,7 +311,7 @@ html, body {
   flex-shrink: 0;
   overflow: hidden;
   background: #e8e8e8;
-  border-radius: 6px;
+  border-radius: 0;
   scroll-snap-align: start;
 }
 
@@ -335,8 +335,8 @@ html, body {
   grid-template-rows: 1fr 1fr;
   grid-auto-flow: column;
   height: 100%;
-  gap: 8px;
-  padding: 8px;
+  gap: 4px;
+  padding: 4px;
 }
 
 #grid-mobile .cell {
@@ -370,13 +370,14 @@ html, body {
   }
 
   /* Шапка с логотипами — строка над фото, выровнена по его краям */
+  /* Точная ширина задаётся через JS в buildCarousel */
   #logos-header {
     position: relative !important;
     inset: auto !important;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    width: 55vw;
+    width: 65vw;
     margin: 10px auto 6px;
     pointer-events: auto;
   }
@@ -444,14 +445,6 @@ html, body {
 }
 
 @media (max-width: 480px) {
-  #featured-wrap {
-    width: 72vw !important;
-  }
-
-  #logos-header {
-    width: 72vw;
-  }
-
   #caption-name {
     font-size: 11px;
   }
