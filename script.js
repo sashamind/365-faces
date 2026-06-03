@@ -277,9 +277,16 @@ function buildMobileGrid() {
    ============================================ */
 function attachMobileEvents() {
   const colBottom = document.getElementById('col-bottom');
+  let activeCell  = null;
+
   colBottom.addEventListener('click', (e) => {
     const cell = e.target.closest('.cell');
     if (!cell) return;
+
+    if (activeCell) activeCell.classList.remove('is-active');
+    activeCell = cell;
+    cell.classList.add('is-active');
+
     showPerson(parseInt(cell.dataset.num));
   });
 }
