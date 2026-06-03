@@ -229,10 +229,13 @@ function applyLayout() {
    МОБИЛЬНЫЙ LAYOUT
    ============================================ */
 function applyMobileLayout() {
-  colCenter.style.left   = '';
-  colCenter.style.width  = '';
+  colCenter.style.left    = '';
+  colCenter.style.width   = '';
   featuredEl.style.height = '';
-  buildMobileGrid();
+  // Карусель строится в loadFeaturedPhoto / showPerson — сетка после неё
+  if (currentSeries.length > 0) {
+    buildCarousel(currentSeries, currentSeriesIdx);
+  }
 }
 
 /* ============================================
@@ -848,10 +851,10 @@ let resizeTimer = null;
 function handleResize() {
   clearTimeout(resizeTimer);
   resizeTimer = setTimeout(() => {
-    applyLayout();
+    applyLayout(); // на мобайле пересоздаёт карусель если серия есть
     if (isMobile()) {
+      buildMobileGrid();   // сетка ПОСЛЕ карусели — offsetHeight корректный
       animateMobileGrid();
-      if (currentSeries.length > 0) buildCarousel(currentSeries, currentSeriesIdx);
     } else {
       setupScrollBoth();
       animateGrids();
@@ -1022,6 +1025,9 @@ async function init() {
   PEOPLE_DATA = buildPeopleData();
   applyLayout();
   await loadFeaturedPhoto();
+
+  // На мобайле сетку строим ПОСЛЕ карусели (нужен корректный offsetHeight col-bottom)
+  if (isMobile()) buildMobileGrid();
 
   animateFeaturedOpen(() => {
     if (isMobile()) {
