@@ -371,23 +371,21 @@ function showPhotoSrc(src) {
    ОБНОВИТЬ ПОДПИСЬ ПОД ФОТО
    ============================================ */
 function updateCaption(name, day) {
-  const dayNum   = document.getElementById('caption-day-num');
-  const dayTotal = document.getElementById('caption-day-total');
-  const caption  = document.getElementById('featured-caption');
+  const dayNum    = document.getElementById('caption-day-num');
+  const dayTotal  = document.getElementById('caption-day-total');
+  const captionDay = document.getElementById('caption-day');
 
-  // Не обновляем если данные не изменились
   if (captionName.textContent === name &&
       dayNum.textContent === `${day}/`) return;
 
-  gsap.to(caption, {
+  const targets = [captionName, captionDay];
+  gsap.to(targets, {
     opacity: 0, y: 4, duration: 0.15, ease: 'power2.in',
     onComplete: () => {
       captionName.textContent = name;
       dayNum.textContent      = `${day}/`;
       dayTotal.textContent    = '365';
-      gsap.to(caption, {
-        opacity: 1, y: 0, duration: 0.2, ease: 'power2.out'
-      });
+      gsap.to(targets, { opacity: 1, y: 0, duration: 0.2, ease: 'power2.out' });
     }
   });
 }
@@ -807,7 +805,7 @@ function animateFeaturedOpen(onComplete) {
   setTimeout(() => featuredEl.classList.add('is-open'), 100);
 
   gsap.fromTo(
-    document.getElementById('featured-caption'),
+    document.getElementById('featured-footer'),
     { opacity: 0, y: 6 },
     { opacity: 1, y: 0, duration: 0.5, delay: 0.9, ease: 'power2.out' }
   );

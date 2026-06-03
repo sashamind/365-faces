@@ -190,23 +190,29 @@ html, body {
 #featured.is-open::after  { transform: translateX(100%);  }
 
 /* ============================================
-   ПОДПИСЬ ПОД ФОТО
+   ПОДПИСЬ ПОД ФОТО — три колонки: имя | точки | номер
    ============================================ */
-#featured-caption {
+#featured-footer {
   display: flex;
-  align-items: baseline;
-  gap: 8px;
-  margin-top: 12px;
+  align-items: center;
+  margin-top: 10px;
   opacity: 0;
   padding: 0 2px;
 }
 
 #caption-name {
+  flex: 1;
   font-size: 13px;
   font-weight: 500;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: #e03030;
+}
+
+#caption-day {
+  flex: 1;
+  text-align: right;
+  white-space: nowrap;
 }
 
 #caption-day-num {
@@ -224,13 +230,13 @@ html, body {
 }
 
 /* ============================================
-   ИНДИКАТОР СЕРИИ — точки
+   ИНДИКАТОР СЕРИИ — точки (центр строки)
    ============================================ */
 #series-indicator {
+  flex: 1;
   display: flex;
   gap: 5px;
   justify-content: center;
-  margin-top: 10px;
   min-height: 6px;
   opacity: 0;
 }
@@ -378,22 +384,9 @@ html, body {
     height: auto !important;
   }
 
-  /* Подпись и точки в одну строку */
   #featured-footer {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 5px 0;
-    width: 100%;
-  }
-
-  #featured-caption {
-    margin-top: 0;
-  }
-
-  #series-indicator {
-    margin-top: 0;
-    justify-content: flex-end;
+    margin-top: 6px;
+    padding: 2px 0;
   }
 
   #col-bottom {
