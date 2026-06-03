@@ -499,6 +499,39 @@ function setupScrubbing() {
     showPhotoSrc(currentSeries[currentSeriesIdx]);
     updateSeriesIndicator();
   }, { passive: false });
+
+  // Свайп пальцем на мобильном
+  let touchStartX = null;
+  let accumTouch  = 0;
+
+  scrubOverlay.addEventListener('touchstart', (e) => {
+    touchStartX = e.touches[0].clientX;
+    accumTouch  = 0;
+  }, { passive: true });
+
+  scrubOverlay.addEventListener('touchmove', (e) => {
+    if (touchStartX === null || currentSeries.length <= 1) return;
+    e.preventDefault();
+
+    const dx   = touchStartX - e.touches[0].clientX;
+    touchStartX = e.touches[0].clientX;
+    accumTouch += dx;
+
+    if (Math.abs(accumTouch) < 40) return;
+
+    currentSeriesIdx = accumTouch > 0
+      ? Math.min(currentSeriesIdx + 1, currentSeries.length - 1)
+      : Math.max(currentSeriesIdx - 1, 0);
+    accumTouch = 0;
+
+    showPhotoSrc(currentSeries[currentSeriesIdx]);
+    updateSeriesIndicator();
+  }, { passive: false });
+
+  scrubOverlay.addEventListener('touchend', () => {
+    touchStartX = null;
+    accumTouch  = 0;
+  }, { passive: true });
 }
 
 /* ============================================
