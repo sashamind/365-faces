@@ -349,6 +349,19 @@ html, body {
    АДАПТИВ — планшет и телефон
    ============================================ */
 @media (max-width: 900px) {
+  /* Разрешаем скролл документа на ~60px чтобы Safari мог убрать нижний бар.
+     #app остаётся position: fixed — контент не двигается, только chrome браузера */
+  html {
+    height: auto;
+    overflow-y: auto;
+    overscroll-behavior-y: none;
+  }
+  body {
+    height: auto;
+    overflow-y: auto;
+    min-height: calc(100vh + 60px);
+  }
+
   #app {
     flex-direction: column;
   }
