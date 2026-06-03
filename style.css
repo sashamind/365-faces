@@ -194,7 +194,7 @@ html, body {
    ============================================ */
 #featured-footer {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   margin-top: 10px;
   opacity: 0;
   padding: 0 2px;
@@ -237,6 +237,7 @@ html, body {
   display: flex;
   gap: 5px;
   justify-content: center;
+  align-self: center;
   min-height: 6px;
   opacity: 0;
 }
