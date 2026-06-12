@@ -351,8 +351,13 @@ html, body {
     min-height: calc(100vh + 60px);
   }
 
+  /* Высота = большой вьюпорт (бар спрятан): изначально бар Safari
+     перекрывает низ сетки, после скролла прячется — пустой полосы нет */
   #app {
     flex-direction: column;
+    bottom: auto;
+    height: 100vh;   /* фолбэк для старых браузеров */
+    height: 100lvh;
   }
 
   #col-left,
