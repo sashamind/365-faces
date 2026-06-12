@@ -56,8 +56,6 @@ const logoRight    = document.getElementById('project-logo-bottom');
 let cellsLeft   = [];
 let cellsRight  = [];
 let cellsMobile = [];
-let activeSide = null;
-let activeIdx  = -1;
 
 // Crossfade слои
 let isFading   = false;
@@ -143,6 +141,20 @@ function shuffleArray(arr) {
 }
 
 /* ============================================
+   ПОРЯДОК СЕТКИ — перемешивается один раз,
+   при resize порядок сохраняется
+   ============================================ */
+let shuffledIndices = null;
+
+function getShuffledIndices() {
+  if (!shuffledIndices) {
+    shuffledIndices = Array.from({ length: CONFIG.total }, (_, i) => i + 1);
+    shuffleArray(shuffledIndices);
+  }
+  return shuffledIndices;
+}
+
+/* ============================================
    ПОСТРОЕНИЕ СЕТКИ
    halfGap — симметричный отступ от края,
    чтобы зазоры были одинаковы со всех сторон
@@ -210,9 +222,8 @@ function applyLayout() {
   featuredEl.style.height   = featH + 'px';
 
 
-  // Строим сетки — перемешанные индексы
-  const indices = Array.from({ length: CONFIG.total }, (_, i) => i + 1);
-  shuffleArray(indices);
+  // Строим сетки — порядок стабилен между resize
+  const indices = getShuffledIndices();
 
   const leftCount    = Math.ceil(CONFIG.total / 2);
   const leftIndices  = indices.slice(0, leftCount);
@@ -253,8 +264,7 @@ function buildMobileGrid() {
   gridEl.style.gridAutoColumns   = cellW + 'px';
   gridEl.style.gridTemplateRows  = `repeat(2, ${cellH}px)`;
 
-  const indices = Array.from({ length: CONFIG.total }, (_, i) => i + 1);
-  shuffleArray(indices);
+  const indices = getShuffledIndices();
 
   cellsMobile = indices.map(photoNum => {
     const cell       = document.createElement('div');
@@ -279,6 +289,12 @@ function attachMobileEvents() {
   const colBottom = document.getElementById('col-bottom');
   let activeCell  = null;
 
+  // Предзагрузка серии уже при касании — выигрываем ~100мс до клика
+  colBottom.addEventListener('touchstart', (e) => {
+    const cell = e.target.closest('.cell');
+    if (cell) preloadSeries(parseInt(cell.dataset.num));
+  }, { passive: true });
+
   colBottom.addEventListener('click', (e) => {
     const cell = e.target.closest('.cell');
     if (!cell) return;
@@ -295,17 +311,22 @@ function attachMobileEvents() {
    МОБИЛЬНАЯ АНИМАЦИЯ СЕТКИ
    IntersectionObserver по горизонтальному скроллу
    ============================================ */
+let observerMobile = null;
+
 function animateMobileGrid() {
+  if (observerMobile) observerMobile.disconnect();
+
   const colBottom = document.getElementById('col-bottom');
-  const observer  = new IntersectionObserver((entries) => {
+  observerMobile  = new IntersectionObserver((entries) => {
     entries.forEach(entry => {
       if (!entry.isIntersecting) return;
       loadAndRevealCell(entry.target);
-      observer.unobserve(entry.target);
+      observerMobile.unobserve(entry.target);
     });
-  }, { root: colBottom, threshold: 0.1 });
+    // rootMargin по горизонтали — грузим заранее при скролле ленты
+  }, { root: colBottom, rootMargin: '0px 400px', threshold: 0.1 });
 
-  cellsMobile.forEach(cell => observer.observe(cell));
+  cellsMobile.forEach(cell => observerMobile.observe(cell));
 }
 
 /* ============================================
@@ -415,7 +436,23 @@ function showPerson(personId) {
   updateCaption(person.name, personId);
 
   if (isMobile()) {
-    buildCarousel(currentSeries, 0);
+    // Ждём загрузку первого фото — чтобы карусель не мигала серым
+    preloadSeries(personId);
+    const firstImg = preloadCache[currentSeries[0]];
+    let built = false;
+    const build = () => {
+      if (built || currentPersonId !== personId) return;
+      built = true;
+      buildCarousel(currentSeries, 0);
+    };
+
+    if (firstImg.complete && firstImg.naturalWidth > 0) {
+      build();
+    } else {
+      firstImg.addEventListener('load',  build, { once: true });
+      firstImg.addEventListener('error', build, { once: true });
+      setTimeout(build, 800); // фолбэк на медленной сети
+    }
   } else {
     showPhotoSrc(currentSeries[0]);
   }
@@ -577,9 +614,13 @@ function attachEventsBoth() {
   let hoverTimer = null;
   let lastCell   = null;
 
-  function attachToColumn(col, cells, side) {
+  function attachToColumn(col) {
 
     col.addEventListener('pointermove', (e) => {
+      // На таче (iPad в десктопной раскладке) hover-задержка
+      // не нужна — работает обычный тап через click
+      if (e.pointerType === 'touch') return;
+
       const cell = e.target.closest('.cell');
       if (cell === lastCell) return;
 
@@ -592,9 +633,6 @@ function attachEventsBoth() {
       if (!cell) return;
 
       cell.classList.add('is-active');
-      activeSide = side;
-      activeIdx  = cells.indexOf(cell);
-
       preloadSeries(parseInt(cell.dataset.num));
 
       hoverTimer = setTimeout(() => {
@@ -608,7 +646,6 @@ function attachEventsBoth() {
         lastCell = null;
       }
       clearTimeout(hoverTimer);
-      if (activeSide === side) { activeIdx = -1; activeSide = null; }
     });
 
     col.addEventListener('click', (e) => {
@@ -619,8 +656,8 @@ function attachEventsBoth() {
     });
   }
 
-  attachToColumn(colLeft,  cellsLeft,  'left');
-  attachToColumn(colRight, cellsRight, 'right');
+  attachToColumn(colLeft);
+  attachToColumn(colRight);
 }
 
 /* ============================================
@@ -746,7 +783,8 @@ function setupScrollAnimation(scrollEl, cells) {
 
       observer.unobserve(entry.target);
     });
-  }, { root: scrollEl, rootMargin: '0px', threshold: 0.1 });
+    // rootMargin 400px — грузим заранее, до входа в зону видимости
+  }, { root: scrollEl, rootMargin: '400px 0px', threshold: 0.1 });
 
   // Наблюдаем только за ячейками ниже экрана
   triggers.forEach((_, triggerCell) => {
@@ -803,19 +841,20 @@ function loadFeaturedPhoto() {
     layerTop.style.zIndex  = '2';
     layerBot.style.zIndex  = '1';
 
-    layerTop.onload = () => {
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
       layerTop.style.opacity = '1';
       updateSeriesIndicator();
       resolve();
     };
-    layerTop.onerror = () => resolve();
+
+    layerTop.onload  = finish;
+    layerTop.onerror = () => { if (!done) { done = true; resolve(); } };
     layerTop.src     = currentSeries[0];
 
-    if (layerTop.complete && layerTop.naturalWidth > 0) {
-      layerTop.style.opacity = '1';
-      updateSeriesIndicator();
-      resolve();
-    }
+    if (layerTop.complete && layerTop.naturalWidth > 0) finish();
   });
 }
 
@@ -853,54 +892,33 @@ function animateFeaturedOpen(onComplete) {
 /* ============================================
    RESIZE — пересчёт при изменении окна
    ============================================ */
-let resizeTimer = null;
+let resizeTimer   = null;
+let lastViewportW = window.innerWidth;
 
 function handleResize() {
   clearTimeout(resizeTimer);
   resizeTimer = setTimeout(() => {
+    // На мобиле высота прыгает при сворачивании браузерного бара —
+    // пересобираем только если изменилась ширина (поворот экрана)
+    const widthChanged = window.innerWidth !== lastViewportW;
+    if (isMobile() && !widthChanged) return;
+    lastViewportW = window.innerWidth;
+
     applyLayout(); // на мобайле пересоздаёт карусель если серия есть
     if (isMobile()) {
       buildMobileGrid();   // сетка ПОСЛЕ карусели — offsetHeight корректный
       animateMobileGrid();
     } else {
+      // Если пришли с мобильной раскладки — crossfade-слои пустые, шторки закрыты
+      if (!layerTop.src && currentSeries.length > 0) {
+        layerTop.src = currentSeries[currentSeriesIdx];
+      }
+      featuredWrap.classList.add('is-revealed');
+      featuredEl.classList.add('is-open');
       setupScrollBoth();
       animateGrids();
     }
   }, 200);
-}
-
-/* ============================================
-   СИНХРОННЫЙ СКРОЛЛ БОКОВЫХ КОЛОНОК
-   Скроллим одну — вторая повторяет
-   ============================================ */
-let isSyncingScroll = false;
-
-function setupSyncScroll() {
-  colLeft.addEventListener('scroll', () => {
-    if (isSyncingScroll) return;
-    isSyncingScroll    = true;
-    colRight.scrollTop = colLeft.scrollTop;
-    isSyncingScroll    = false;
-  });
-
-  colRight.addEventListener('scroll', () => {
-    if (isSyncingScroll) return;
-    isSyncingScroll   = true;
-    colLeft.scrollTop = colRight.scrollTop;
-    isSyncingScroll   = false;
-  });
-}
-
-/* ============================================
-   КОЛЕСО МЫШИ НАД ЦЕНТРОМ
-   Курсор над центром — скроллим боковые
-   ============================================ */
-function setupWheelScroll() {
-  colCenter.addEventListener('wheel', (e) => {
-    e.preventDefault();
-    colLeft.scrollTop  += e.deltaY;
-    colRight.scrollTop += e.deltaY;
-  }, { passive: false });
 }
 
 /* ============================================
@@ -1011,12 +1029,12 @@ async function init() {
     }
   });
 
-  if (isMobile()) {
-    attachMobileEvents();
-    setupCarouselScroll();
-  } else {
-    attachEventsBoth();
-  }
+  // Все обработчики через делегирование на контейнеры —
+  // вешаем сразу оба набора, чтобы переход через брейкпоинт
+  // (resize через 900px) не оставлял UI без событий
+  attachEventsBoth();
+  attachMobileEvents();
+  setupCarouselScroll();
 
   setupScrubbing();
   setupKeyboard();

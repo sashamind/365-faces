@@ -269,14 +269,7 @@ html, body {
 #project-logo,
 #project-logo-bottom {
   position: absolute;
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: #333;
-  white-space: nowrap;
   opacity: 0;
-  transition: color 0.3s ease;
   pointer-events: auto;
   cursor: default;
 }
@@ -289,11 +282,6 @@ html, body {
   height: 33px;
   width: auto;
   display: block;
-}
-
-#project-logo:hover,
-#project-logo-bottom:hover {
-  color: #666;
 }
 
 /* ============================================
