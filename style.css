@@ -159,11 +159,12 @@ html, body {
   opacity: 1;
 }
 
-/* Оверлей для скрабинга мышью */
+/* Оверлей для листания кликом/колесом */
 #scrub-overlay {
   position: absolute;
   inset: 0;
   z-index: 5;
+  cursor: pointer;
 }
 
 /* ============================================

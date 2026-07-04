@@ -552,9 +552,17 @@ function setupScrubbing() {
   const scrubOverlay = document.getElementById('scrub-overlay');
   if (!scrubOverlay) return;
 
-  // Единая модель листания: пошагово — тачпад, стрелки, свайп.
+  // Единая модель листания: пошагово — клик, тачпад, стрелки, свайп.
   // Скрабинг позицией мыши убран: он затирал выбор,
   // сделанный колесом/стрелками, при любом сдвиге курсора.
+
+  // Десктоп: клик по фото — следующее в серии (по кругу)
+  scrubOverlay.addEventListener('click', () => {
+    if (currentSeries.length <= 1) return;
+    currentSeriesIdx = (currentSeriesIdx + 1) % currentSeries.length;
+    showPhotoSrc(currentSeries[currentSeriesIdx]);
+    updateSeriesIndicator();
+  });
 
   // Десктоп: горизонтальный свайп тачпадом
   let accumX = 0;
@@ -1038,6 +1046,15 @@ function setupCarouselScroll() {
       }
     }, 80);
   }, { passive: true });
+
+  // Тап по фото — следующий слайд (по кругу).
+  // После свайпа click не срабатывает, конфликта со скроллом нет
+  outer.addEventListener('click', () => {
+    if (currentSeries.length <= 1) return;
+    currentSeriesIdx = (currentSeriesIdx + 1) % currentSeries.length;
+    positionCarousel(currentSeriesIdx, true);
+    updateSeriesIndicator();
+  });
 }
 
 /* ============================================
