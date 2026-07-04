@@ -21,7 +21,7 @@ const NAMES = [
 ];
 
 /* ============================================
-   ДАННЫЕ О ЛЮДЯХ
+   ДАННЫЕ О ЛЮДЯХ — заглушки picsum
    ============================================ */
 function buildPeopleData() {
   const data = {};
@@ -31,9 +31,47 @@ function buildPeopleData() {
     for (let s = 1; s <= seriesCount; s++) {
       series.push(`https://picsum.photos/seed/${id * 100 + s}/800/1200`);
     }
-    data[id] = { id, name: NAMES[id % NAMES.length], series };
+    data[id] = { id, name: NAMES[id % NAMES.length], series, real: false };
   }
   return data;
+}
+
+/* ============================================
+   РЕАЛЬНЫЕ ДАННЫЕ — people.json
+   Генерируется автоматически из папки photos/
+   (см. generate-data.js). Найденные записи
+   перекрывают заглушки, остальные дни — picsum.
+   ============================================ */
+async function loadRealData() {
+  try {
+    const res = await fetch('people.json', { cache: 'no-cache' });
+    if (!res.ok) return;
+    const real = await res.json();
+    Object.entries(real).forEach(([id, p]) => {
+      const num = parseInt(id);
+      if (!PEOPLE_DATA[num] || !p.series || !p.series.length) return;
+      PEOPLE_DATA[num] = {
+        id:     num,
+        name:   p.name || PEOPLE_DATA[num].name,
+        series: p.series,
+        thumb:  p.thumb || null,
+        real:   true,
+      };
+    });
+  } catch (_) {
+    // people.json нет — работаем на заглушках
+  }
+}
+
+/* ============================================
+   ПРЕВЬЮ ДЛЯ ЯЧЕЙКИ СЕТКИ
+   Реальное фото: thumb.jpg или первое из серии,
+   заглушка: picsum нужного размера
+   ============================================ */
+function thumbSrc(photoNum, w, h) {
+  const p = PEOPLE_DATA[photoNum];
+  if (p && p.real) return p.thumb || p.series[0];
+  return `https://picsum.photos/seed/${photoNum * 100 + 1}/${w}/${h}`;
 }
 
 /* ============================================
@@ -53,8 +91,6 @@ const logoRight    = document.getElementById('project-logo-bottom');
 /* ============================================
    СОСТОЯНИЕ
    ============================================ */
-let cellsLeft   = [];
-let cellsRight  = [];
 let cellsMobile = [];
 
 // Crossfade слои
@@ -184,8 +220,7 @@ function buildSideGridFromArray(container, indices, cols, cellW, cellH) {
 
     cell.dataset.num = photoNum;
     cell.dataset.day = photoNum;
-    cell.dataset.src =
-      `https://picsum.photos/seed/${photoNum * 100 + 1}/${cellW * 2}/${cellH * 2}`;
+    cell.dataset.src = thumbSrc(photoNum, cellW * 2, cellH * 2);
 
     const img = document.createElement('img');
     img.alt      = '';
@@ -232,8 +267,8 @@ function applyLayout() {
   const gridLeft  = document.getElementById('grid-left');
   const gridRight = document.getElementById('grid-right');
 
-  cellsLeft  = buildSideGridFromArray(gridLeft,  leftIndices,  cols, cellW, cellH);
-  cellsRight = buildSideGridFromArray(gridRight, rightIndices, cols, cellW, cellH);
+  buildSideGridFromArray(gridLeft,  leftIndices,  cols, cellW, cellH);
+  buildSideGridFromArray(gridRight, rightIndices, cols, cellW, cellH);
 }
 
 /* ============================================
@@ -258,8 +293,13 @@ function buildMobileGrid() {
   const gap        = 4;
   const appH       = document.getElementById('app').offsetHeight || window.innerHeight;
   const containerH = colBottom.offsetHeight || Math.round(appH * 0.37);
-  const cellH      = Math.floor((containerH - gap * 3) / 2);
-  const cellW      = Math.round(cellH * CONFIG.photoAspect);
+
+  // Реальные паддинги из CSS — учитывают env(safe-area-inset-bottom)
+  const cs   = getComputedStyle(gridEl);
+  const padY = (parseFloat(cs.paddingTop) || 0) + (parseFloat(cs.paddingBottom) || 0);
+
+  const cellH = Math.floor((containerH - padY - gap) / 2);
+  const cellW = Math.round(cellH * CONFIG.photoAspect);
 
   gridEl.innerHTML = '';
   gridEl.style.gridAutoColumns   = cellW + 'px';
@@ -271,7 +311,7 @@ function buildMobileGrid() {
     const cell       = document.createElement('div');
     cell.className   = 'cell cell-hidden';
     cell.dataset.num = photoNum;
-    cell.dataset.src = `https://picsum.photos/seed/${photoNum * 100 + 1}/${cellW * 2}/${cellH * 2}`;
+    cell.dataset.src = thumbSrc(photoNum, cellW * 2, cellH * 2);
 
     const img    = document.createElement('img');
     img.alt      = '';
@@ -434,6 +474,9 @@ function showPerson(personId) {
   currentSeries    = person.series;
   currentSeriesIdx = 0;
 
+  // Дип-линк: день можно шарить ссылкой вида .../#25
+  history.replaceState(null, '', '#' + personId);
+
   updateCaption(person.name, personId);
 
   if (isMobile()) {
@@ -509,28 +552,9 @@ function setupScrubbing() {
   const scrubOverlay = document.getElementById('scrub-overlay');
   if (!scrubOverlay) return;
 
-  // Десктоп: скрабинг позицией мыши
-  if (!('ontouchstart' in window)) {
-    scrubOverlay.addEventListener('mousemove', (e) => {
-      if (currentSeries.length <= 1) return;
-      const rect   = scrubOverlay.getBoundingClientRect();
-      const ratio  = (e.clientX - rect.left) / rect.width;
-      const newIdx = Math.min(Math.floor(ratio * currentSeries.length), currentSeries.length - 1);
-      if (newIdx !== currentSeriesIdx) {
-        currentSeriesIdx = newIdx;
-        showPhotoSrc(currentSeries[currentSeriesIdx]);
-        updateSeriesIndicator();
-      }
-    });
-
-    scrubOverlay.addEventListener('mouseleave', () => {
-      if (currentSeriesIdx !== 0) {
-        currentSeriesIdx = 0;
-        showPhotoSrc(currentSeries[0]);
-        updateSeriesIndicator();
-      }
-    });
-  }
+  // Единая модель листания: пошагово — тачпад, стрелки, свайп.
+  // Скрабинг позицией мыши убран: он затирал выбор,
+  // сделанный колесом/стрелками, при любом сдвиге курсора.
 
   // Десктоп: горизонтальный свайп тачпадом
   let accumX = 0;
@@ -591,19 +615,19 @@ function setupScrubbing() {
 function setupKeyboard() {
   document.addEventListener('keydown', (e) => {
     if (currentSeries.length <= 1) return;
+    if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
 
-    if (e.key === 'ArrowRight') {
-      currentSeriesIdx = (currentSeriesIdx + 1) % currentSeries.length;
-      showPhotoSrc(currentSeries[currentSeriesIdx]);
-      updateSeriesIndicator();
-    }
+    currentSeriesIdx = e.key === 'ArrowRight'
+      ? (currentSeriesIdx + 1) % currentSeries.length
+      : (currentSeriesIdx - 1 + currentSeries.length) % currentSeries.length;
 
-    if (e.key === 'ArrowLeft') {
-      currentSeriesIdx =
-        (currentSeriesIdx - 1 + currentSeries.length) % currentSeries.length;
+    // Мобильная раскладка: двигаем карусель, а не скрытый crossfade
+    if (isMobile()) {
+      positionCarousel(currentSeriesIdx, true);
+    } else {
       showPhotoSrc(currentSeries[currentSeriesIdx]);
-      updateSeriesIndicator();
     }
+    updateSeriesIndicator();
   });
 }
 
@@ -819,7 +843,11 @@ function setupScrollBoth() {
    ============================================ */
 function loadFeaturedPhoto() {
   return new Promise(resolve => {
-    const num = Math.floor(Math.random() * CONFIG.total) + 1;
+    // Дип-линк #25 — открываем этот день, иначе случайный
+    const hashNum = parseInt((location.hash || '').slice(1));
+    const num = (hashNum >= 1 && hashNum <= CONFIG.total)
+      ? hashNum
+      : Math.floor(Math.random() * CONFIG.total) + 1;
 
     currentPersonId  = num;
     currentSeries    = PEOPLE_DATA[num].series;
@@ -1016,7 +1044,13 @@ function setupCarouselScroll() {
    ИНИЦИАЛИЗАЦИЯ — главная функция запуска
    ============================================ */
 async function init() {
+  // Системное «уменьшить движение» — ускоряем GSAP-анимации до мгновенных
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    gsap.globalTimeline.timeScale(100);
+  }
+
   PEOPLE_DATA = buildPeopleData();
+  await loadRealData(); // реальные фото из photos/ перекрывают заглушки
   applyLayout();
   await loadFeaturedPhoto();
 

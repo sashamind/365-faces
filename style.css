@@ -442,6 +442,11 @@ html, body {
 
   #col-bottom::-webkit-scrollbar { display: none; }
 
+  /* Home-индикатор iPhone не перекрывает нижний ряд сетки */
+  #grid-mobile {
+    padding-bottom: calc(4px + env(safe-area-inset-bottom));
+  }
+
   /* Ячейки в мобильной сетке — слегка прозрачные, как на десктопе */
   #grid-mobile .cell img {
     opacity: 0.35;
@@ -455,5 +460,15 @@ html, body {
 @media (max-width: 480px) {
   #caption-name {
     font-size: 11px;
+  }
+}
+
+/* ============================================
+   УМЕНЬШЕННОЕ ДВИЖЕНИЕ — системная настройка
+   ============================================ */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
   }
 }

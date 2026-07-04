@@ -2,13 +2,26 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>365</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>365 лиц</title>
+  <meta name="description" content="365 лиц — фотопроект: один портрет на каждый день года." />
+  <meta name="theme-color" content="#ffffff" />
+
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="365 лиц" />
+  <meta property="og:description" content="Фотопроект: один портрет на каждый день года." />
 
   <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+
+  <!-- Ранние соединения: шрифты и хостинг картинок -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="preconnect" href="https://picsum.photos" />
+  <link rel="preconnect" href="https://fastly.picsum.photos" />
+
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&display=swap" rel="stylesheet" />
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
-  <link rel="stylesheet" href="style.css" />
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <link rel="stylesheet" href="style.css?v=3" />
 </head>
 <body>
 <div id="app">
@@ -66,6 +79,6 @@
   </div>
 
 </div><!-- #app -->
-  <script src="script.js"></script>
+  <script src="script.js?v=3"></script>
 </body>
 </html>
