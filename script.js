@@ -37,29 +37,49 @@ function buildPeopleData() {
 }
 
 /* ============================================
-   РЕАЛЬНЫЕ ДАННЫЕ — people.json
-   Генерируется автоматически из папки photos/
-   (см. generate-data.js). Найденные записи
-   перекрывают заглушки, остальные дни — picsum.
+   SUPABASE — хранилище фотографий и данных
+   Ключ publishable: предназначен для клиента,
+   даёт только чтение (RLS: select для anon)
+   ============================================ */
+const SUPABASE = {
+  url:    'https://kzzsmdgsjnkhtbzhjlyl.supabase.co',
+  key:    'sb_publishable_vigMK4aHb8SdmT3yt_ymGg_MnjalWEo',
+  bucket: '365-faces',
+  table:  'faces_365',
+};
+
+// Путь в бакете → публичный URL файла
+function storageUrl(filePath) {
+  return `${SUPABASE.url}/storage/v1/object/public/${SUPABASE.bucket}/${filePath}`;
+}
+
+/* ============================================
+   РЕАЛЬНЫЕ ДАННЫЕ — таблица faces_365
+   Наполняется через upload-photos.js.
+   Найденные записи перекрывают заглушки,
+   остальные дни остаются на picsum.
    ============================================ */
 async function loadRealData() {
   try {
-    const res = await fetch('people.json', { cache: 'no-cache' });
+    const res = await fetch(
+      `${SUPABASE.url}/rest/v1/${SUPABASE.table}?select=id,name,series,thumb`,
+      { headers: { apikey: SUPABASE.key } }
+    );
     if (!res.ok) return;
-    const real = await res.json();
-    Object.entries(real).forEach(([id, p]) => {
-      const num = parseInt(id);
-      if (!PEOPLE_DATA[num] || !p.series || !p.series.length) return;
-      PEOPLE_DATA[num] = {
-        id:     num,
-        name:   p.name || PEOPLE_DATA[num].name,
-        series: p.series,
-        thumb:  p.thumb || null,
+
+    const rows = await res.json();
+    rows.forEach(p => {
+      if (!PEOPLE_DATA[p.id] || !p.series || !p.series.length) return;
+      PEOPLE_DATA[p.id] = {
+        id:     p.id,
+        name:   p.name || PEOPLE_DATA[p.id].name,
+        series: p.series.map(storageUrl),
+        thumb:  p.thumb ? storageUrl(p.thumb) : null,
         real:   true,
       };
     });
   } catch (_) {
-    // people.json нет — работаем на заглушках
+    // Supabase недоступен — работаем на заглушках
   }
 }
 

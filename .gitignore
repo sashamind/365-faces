@@ -1,0 +1,8 @@
+# Фотографии живут в Supabase Storage, не в репозитории
+photos/
+
+# Секреты — service_role ключ для заливки
+.env
+
+.DS_Store
+node_modules/
