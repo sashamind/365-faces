@@ -26,21 +26,21 @@ html, body {
   align-items: stretch;
 }
 
-/* Левая колонка — скроллится */
+/* Левая колонка — ленты фото внутри едут сами (setupAutoScroll) */
 #col-left {
   position: relative;
   flex-shrink: 0;
-  overflow-y: scroll;
+  overflow-y: hidden;
   overflow-x: hidden;
   scrollbar-width: none;
 }
 #col-left::-webkit-scrollbar { display: none; }
 
-/* Правая колонка — скроллится */
+/* Правая колонка — так же */
 #col-right {
   position: relative;
   flex-shrink: 0;
-  overflow-y: scroll;
+  overflow-y: hidden;
   overflow-x: hidden;
   scrollbar-width: none;
   margin-left: auto;
@@ -70,6 +70,13 @@ html, body {
 #grid-left,
 #grid-right {
   position: relative;
+}
+
+/* Колонка фото — лента, едет transform'ом */
+.grid-strip {
+  position: absolute;
+  top: 0;
+  will-change: transform;
 }
 
 /* ============================================
@@ -216,7 +223,7 @@ html, body {
 
 #caption-name {
   flex: 1;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 500;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -475,7 +482,7 @@ html, body {
 
 @media (max-width: 480px) {
   #caption-name {
-    font-size: 11px;
+    font-size: 10px;
   }
 }
 
