@@ -269,7 +269,7 @@ function randomPersonId() {
    halfGap — симметричный отступ от края,
    чтобы зазоры были одинаковы со всех сторон
    ============================================ */
-function buildSideGridFromArray(container, indices, cols, cellW, cellH) {
+function buildSideGridFromArray(container, indices, cols, cellW, cellH, fromBottom = false) {
   container.innerHTML = '';
   const cells   = [];
   const rows    = Math.ceil(indices.length / cols);
@@ -280,8 +280,8 @@ function buildSideGridFromArray(container, indices, cols, cellW, cellH) {
   container.style.height = gridH + 'px';
 
   indices.forEach((photoNum, i) => {
-    const col = i % cols;
-    const row = Math.floor(i / cols);
+    const col = fromBottom ? cols - 1 - (i % cols)         : i % cols;
+    const row = fromBottom ? rows - 1 - Math.floor(i / cols) : Math.floor(i / cols);
 
     const cell = createCell(photoNum, cellW * 2, cellH * 2);
 
@@ -329,7 +329,7 @@ function applyLayout() {
   // Строим сетки — порядок стабилен между resize
   const indices = getShuffledIndices();
 
-  // Через одного: реальные фото оказываются вверху обеих колонок
+  // Через одного: реальные фото есть в обеих колонках
   const leftIndices  = indices.filter((_, i) => i % 2 === 0);
   const rightIndices = indices.filter((_, i) => i % 2 === 1);
 
@@ -337,7 +337,9 @@ function applyLayout() {
   const gridRight = document.getElementById('grid-right');
 
   buildSideGridFromArray(gridLeft,  leftIndices,  cols, cellW, cellH);
-  buildSideGridFromArray(gridRight, rightIndices, cols, cellW, cellH);
+  // Правая стартует снизу и едет вверх — раскладываем её снизу,
+  // чтобы реальные фото были в начале пути, а неполный ряд — наверху
+  buildSideGridFromArray(gridRight, rightIndices, cols, cellW, cellH, true);
 }
 
 /* ============================================
@@ -811,16 +813,22 @@ function getWaveIndex(cell) {
    АНИМАЦИЯ ПЕРВОГО ЭКРАНА
    Левая — сверху вниз, правая — волной справа
    ============================================ */
+// Ячейка в видимой зоне колонки (с учётом её прокрутки)
+function isInView(cell, scrollEl) {
+  const top = parseFloat(cell.style.top);
+  const h   = parseFloat(cell.style.height);
+  return top + h > scrollEl.scrollTop && top < scrollEl.scrollTop + window.innerHeight;
+}
+
 function animateGrids() {
-  const vh       = window.innerHeight;
   const gridLeft  = document.getElementById('grid-left');
   const gridRight = document.getElementById('grid-right');
 
   // Только ячейки в зоне видимости
   const visibleLeft = Array.from(gridLeft.querySelectorAll('.cell'))
-    .filter(c => parseFloat(c.style.top) < vh);
+    .filter(c => isInView(c, colLeft));
   const visibleRight = Array.from(gridRight.querySelectorAll('.cell'))
-    .filter(c => parseFloat(c.style.top) < vh);
+    .filter(c => isInView(c, colRight));
 
   // Сортировка — сверху вниз, слева направо
   const sortTopDown = cells =>
@@ -889,13 +897,65 @@ function setupScrollAnimation(scrollEl, cells) {
     // rootMargin 400px — грузим заранее, до входа в зону видимости
   }, { root: scrollEl, rootMargin: '400px 0px', threshold: 0.1 });
 
-  // Наблюдаем только за ячейками ниже экрана
+  // Наблюдаем только за строками вне экрана — видимые показывает animateGrids
   triggers.forEach((_, triggerCell) => {
-    if (parseFloat(triggerCell.style.top) >= window.innerHeight)
-      observer.observe(triggerCell);
+    if (!isInView(triggerCell, scrollEl)) observer.observe(triggerCell);
   });
 
   return observer;
+}
+
+/* ============================================
+   АВТОПРОКРУТКА КОЛОНОК — медленно, в разные стороны:
+   левая вниз, правая вверх; у края — разворот.
+   Колонка стоит, пока над ней мышь, и чуть-чуть
+   после ручной прокрутки
+   ============================================ */
+const AUTO_SCROLL = { speed: 14, resumeDelay: 3000 }; // px/с, мс
+
+// Правая колонка начинает снизу
+function resetAutoScrollStart() {
+  colLeft.scrollTop  = 0;
+  colRight.scrollTop = colRight.scrollHeight;
+}
+
+function setupAutoScroll() {
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+  const cols = [
+    { el: colLeft,  dir:  1 },
+    { el: colRight, dir: -1 },
+  ].map(c => ({ ...c, pos: c.el.scrollTop, hover: false, pausedUntil: 0 }));
+
+  cols.forEach(c => {
+    c.el.addEventListener('pointerenter', (e) => { if (e.pointerType !== 'touch') c.hover = true; });
+    c.el.addEventListener('pointerleave', () => { c.hover = false; });
+    const pause = () => { c.pausedUntil = performance.now() + AUTO_SCROLL.resumeDelay; };
+    c.el.addEventListener('wheel',      pause, { passive: true });
+    c.el.addEventListener('touchstart', pause, { passive: true });
+    c.el.addEventListener('focusin',    pause);
+  });
+
+  let last = performance.now();
+  function tick(now) {
+    const dt = Math.min(now - last, 100) / 1000; // после фоновой вкладки — без скачка
+    last = now;
+
+    if (!isMobile()) {
+      cols.forEach(c => {
+        const max = c.el.scrollHeight - c.el.clientHeight;
+        // На паузе запоминаем, куда колонку прокрутили руками
+        if (max <= 0 || c.hover || now < c.pausedUntil) { c.pos = c.el.scrollTop; return; }
+
+        c.pos += c.dir * AUTO_SCROLL.speed * dt;
+        if (c.pos <= 0)   { c.pos = 0;   c.dir =  1; }
+        if (c.pos >= max) { c.pos = max; c.dir = -1; }
+        c.el.scrollTop = c.pos;
+      });
+    }
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
 }
 
 /* ============================================
@@ -1144,6 +1204,7 @@ async function init() {
   await loadRealData(); // реальные фото из photos/ перекрывают заглушки
   shuffledIndices = null;
   applyLayout();        // пересобираем сетку: реальные фото — первыми
+  resetAutoScrollStart();
   await loadFeaturedPhoto();
 
   // На мобайле сетку строим ПОСЛЕ карусели (нужен корректный offsetHeight col-bottom)
@@ -1156,6 +1217,7 @@ async function init() {
       animateGrids();
       setupScrollBoth();
     }
+    setupAutoScroll();
   });
 
   // Все обработчики через делегирование на контейнеры —
