@@ -870,19 +870,21 @@ function setupScrollAnimation(scrollEl, cells) {
 }
 
 /* ============================================
-   АВТОПРОКРУТКА ЛЕНТ — каждая колонка фото
-   медленно едет в свою сторону, у края — разворот.
-   Часть (левая/правая) стоит, пока над ней мышь,
-   и чуть-чуть после ручной прокрутки
+   РЕЖИМ ОЖИДАНИЯ — ленты фото стоят, пока
+   человек что-то делает. 30 с без мыши, касаний,
+   колеса и клавиш — каждая колонка медленно едет
+   в свою сторону (у края — разворот). Любое
+   движение — сразу стоп
    ============================================ */
-const AUTO_SCROLL = { speed: 14, resumeDelay: 3000 }; // px/с, мс
+const AUTO_SCROLL = {
+  speed:   14,     // px/с
+  idleMs:  30000,  // сколько ждать без активности
+  rampMs:  2000,   // плавный разгон после старта
+};
 
 let strips = []; // { el, side, dir, max, pos } — пересобираются в applyLayout
 
-const sideState = {
-  left:  { hover: false, pausedUntil: 0 },
-  right: { hover: false, pausedUntil: 0 },
-};
+let lastActivity = performance.now();
 
 function applyStrip(st) {
   st.el.style.transform = `translate3d(0, ${-st.pos}px, 0)`;
@@ -890,7 +892,6 @@ function applyStrip(st) {
 
 // Ручная прокрутка части: все её ленты сдвигаются вместе
 function nudgeSide(side, dy) {
-  sideState[side].pausedUntil = performance.now() + AUTO_SCROLL.resumeDelay;
   strips.forEach(st => {
     if (st.side !== side) return;
     st.pos = Math.max(0, Math.min(st.max, st.pos + dy));
@@ -899,11 +900,13 @@ function nudgeSide(side, dy) {
 }
 
 function setupAutoScroll() {
-  [['left', colLeft], ['right', colRight]].forEach(([side, col]) => {
-    const state = sideState[side];
-    col.addEventListener('pointerenter', (e) => { if (e.pointerType !== 'touch') state.hover = true; });
-    col.addEventListener('pointerleave', () => { state.hover = false; });
+  // Любая активность сбрасывает таймер ожидания и останавливает ленты
+  const markActive = () => { lastActivity = performance.now(); };
+  ['pointermove', 'pointerdown', 'wheel', 'touchstart', 'keydown'].forEach(type =>
+    document.addEventListener(type, markActive, { passive: true })
+  );
 
+  [['left', colLeft], ['right', colRight]].forEach(([side, col]) => {
     // Колонки overflow: hidden — колесо и палец двигают ленты сами
     col.addEventListener('wheel', (e) => nudgeSide(side, e.deltaY), { passive: true });
     let touchY = null;
@@ -921,7 +924,6 @@ function setupAutoScroll() {
     col.addEventListener('focusin', (e) => {
       const cell = e.target.closest('.cell');
       if (!cell) return;
-      state.pausedUntil = performance.now() + AUTO_SCROLL.resumeDelay;
       requestAnimationFrame(() => {
         col.scrollTop = 0;
         const st = strips.find(x => x.el === cell.parentElement);
@@ -941,12 +943,15 @@ function setupAutoScroll() {
     const dt = Math.min(now - last, 100) / 1000; // после фоновой вкладки — без скачка
     last = now;
 
-    if (!isMobile()) {
+    // Сколько уже длится ожидание; первые rampMs — разгон от нуля
+    const idleFor = now - lastActivity - AUTO_SCROLL.idleMs;
+    if (!isMobile() && idleFor > 0) {
+      const ramp = Math.min(1, idleFor / AUTO_SCROLL.rampMs);
+      const ease = ramp * ramp * (3 - 2 * ramp); // smoothstep
       strips.forEach(st => {
-        const state = sideState[st.side];
-        if (st.max <= 0 || state.hover || now < state.pausedUntil) return;
+        if (st.max <= 0) return;
 
-        st.pos += st.dir * AUTO_SCROLL.speed * dt;
+        st.pos += st.dir * AUTO_SCROLL.speed * ease * dt;
         if (st.pos <= 0)      { st.pos = 0;      st.dir =  1; }
         if (st.pos >= st.max) { st.pos = st.max; st.dir = -1; }
         applyStrip(st);
