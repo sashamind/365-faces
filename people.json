@@ -1,70 +1,70 @@
 {
   "10": {
     "series": [
-      "photos/010-Dasha/1.jpg",
-      "photos/010-Dasha/2.jpg"
+      "photos/010-Даша/1.jpg",
+      "photos/010-Даша/2.jpg"
     ],
-    "name": "Dasha",
-    "thumb": "photos/010-Dasha/thumb.jpg"
+    "name": "Даша",
+    "thumb": "photos/010-Даша/thumb.jpg"
   },
   "21": {
     "series": [
-      "photos/021-Sasha/1.jpg",
-      "photos/021-Sasha/2.jpg",
-      "photos/021-Sasha/3.jpg"
+      "photos/021-Саша/1.jpg",
+      "photos/021-Саша/2.jpg",
+      "photos/021-Саша/3.jpg"
     ],
-    "name": "Sasha",
-    "thumb": "photos/021-Sasha/thumb.jpg"
+    "name": "Саша",
+    "thumb": "photos/021-Саша/thumb.jpg"
   },
   "22": {
     "series": [
-      "photos/022-Sasha/1.jpg",
-      "photos/022-Sasha/2.jpg",
-      "photos/022-Sasha/3.jpg",
-      "photos/022-Sasha/4.jpg",
-      "photos/022-Sasha/5.jpg",
-      "photos/022-Sasha/6.jpg"
+      "photos/022-Саша/1.jpg",
+      "photos/022-Саша/2.jpg",
+      "photos/022-Саша/3.jpg",
+      "photos/022-Саша/4.jpg",
+      "photos/022-Саша/5.jpg",
+      "photos/022-Саша/6.jpg"
     ],
-    "name": "Sasha",
-    "thumb": "photos/022-Sasha/thumb.jpg"
+    "name": "Саша",
+    "thumb": "photos/022-Саша/thumb.jpg"
   },
   "23": {
     "series": [
-      "photos/023-Maxim/1.jpg",
-      "photos/023-Maxim/2.jpg",
-      "photos/023-Maxim/3.jpg",
-      "photos/023-Maxim/4.jpg",
-      "photos/023-Maxim/5.jpg",
-      "photos/023-Maxim/6.jpg",
-      "photos/023-Maxim/7.jpg"
+      "photos/023-Максим/1.jpg",
+      "photos/023-Максим/2.jpg",
+      "photos/023-Максим/3.jpg",
+      "photos/023-Максим/4.jpg",
+      "photos/023-Максим/5.jpg",
+      "photos/023-Максим/6.jpg",
+      "photos/023-Максим/7.jpg"
     ],
-    "name": "Maxim",
-    "thumb": "photos/023-Maxim/thumb.jpg"
+    "name": "Максим",
+    "thumb": "photos/023-Максим/thumb.jpg"
   },
   "24": {
     "series": [
-      "photos/024-Sasha/1.jpg",
-      "photos/024-Sasha/2.jpg",
-      "photos/024-Sasha/3.jpg",
-      "photos/024-Sasha/4.jpg",
-      "photos/024-Sasha/5.jpg"
+      "photos/024-Саша/1.jpg",
+      "photos/024-Саша/2.jpg",
+      "photos/024-Саша/3.jpg",
+      "photos/024-Саша/4.jpg",
+      "photos/024-Саша/5.jpg"
     ],
-    "name": "Sasha",
-    "thumb": "photos/024-Sasha/thumb.jpg"
+    "name": "Саша",
+    "thumb": "photos/024-Саша/thumb.jpg"
   },
   "25": {
     "series": [
-      "photos/025-Dasha/1.jpg",
-      "photos/025-Dasha/2.jpg",
-      "photos/025-Dasha/3.jpg",
-      "photos/025-Dasha/4.jpg",
-      "photos/025-Dasha/5.jpg",
-      "photos/025-Dasha/6.jpg",
-      "photos/025-Dasha/7.jpg",
-      "photos/025-Dasha/8.jpg"
+      "photos/025-Даша/1.jpg",
+      "photos/025-Даша/2.jpg",
+      "photos/025-Даша/3.jpg",
+      "photos/025-Даша/4.jpg",
+      "photos/025-Даша/5.jpg",
+      "photos/025-Даша/6.jpg",
+      "photos/025-Даша/7.jpg",
+      "photos/025-Даша/8.jpg"
     ],
-    "name": "Dasha",
-    "thumb": "photos/025-Dasha/thumb.jpg"
+    "name": "Даша",
+    "thumb": "photos/025-Даша/thumb.jpg"
   },
   "26": {
     "series": [
@@ -75,13 +75,13 @@
   },
   "27": {
     "series": [
-      "photos/027-Katya/1.jpg",
-      "photos/027-Katya/2.jpg",
-      "photos/027-Katya/3.jpg",
-      "photos/027-Katya/4.jpg",
-      "photos/027-Katya/5.jpg"
+      "photos/027-Катя/1.jpg",
+      "photos/027-Катя/2.jpg",
+      "photos/027-Катя/3.jpg",
+      "photos/027-Катя/4.jpg",
+      "photos/027-Катя/5.jpg"
     ],
-    "name": "Katya",
-    "thumb": "photos/027-Katya/thumb.jpg"
+    "name": "Катя",
+    "thumb": "photos/027-Катя/thumb.jpg"
   }
 }
