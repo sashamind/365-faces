@@ -239,8 +239,12 @@ function shuffleArray(arr) {
 }
 
 /* ============================================
-   ПОРЯДОК СЕТКИ — сначала реальные фото,
-   потом заглушки; внутри групп — случайно.
+   ПОРЯДОК СЕТКИ — сначала каждое реальное фото
+   по разу, дальше ячейки без своих фото заполняются
+   повторами реальных: перемешанными кругами, чтобы
+   все люди встречались поровну. Ячейка-повтор
+   ведёт на настоящего человека и его день.
+   Пока реальных нет — заглушки picsum.
    Перемешивается один раз, при resize сохраняется
    ============================================ */
 let shuffledIndices = null;
@@ -251,8 +255,21 @@ function getShuffledIndices() {
     const real = all.filter(id => PEOPLE_DATA[id].real);
     const fake = all.filter(id => !PEOPLE_DATA[id].real);
     shuffleArray(real);
-    shuffleArray(fake);
-    shuffledIndices = real.concat(fake);
+
+    if (!real.length) {
+      shuffleArray(fake);
+      shuffledIndices = fake;
+    } else {
+      const repeats = [];
+      while (repeats.length < fake.length) {
+        const round = [...real];
+        shuffleArray(round);
+        // Стык кругов — без одного и того же человека подряд
+        if (round.length > 1 && round[0] === repeats[repeats.length - 1]) round.push(round.shift());
+        repeats.push(...round);
+      }
+      shuffledIndices = real.concat(repeats.slice(0, fake.length));
+    }
   }
   return shuffledIndices;
 }

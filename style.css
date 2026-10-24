@@ -26,6 +26,20 @@ html, body {
   align-items: stretch;
 }
 
+/* Лёгкий градиент в белый внизу страницы — поверх превью,
+   но под центральной колонкой (фото и логотип не задевает) */
+#app::after {
+  content: '';
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 140px;
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0), #fff);
+  pointer-events: none;
+  z-index: 8;
+}
+
 /* Левая колонка — скроллится */
 #col-left {
   position: relative;
@@ -457,6 +471,11 @@ html, body {
   }
 
   #col-bottom::-webkit-scrollbar { display: none; }
+
+  /* На телефоне градиент ниже — сетка и так невысокая */
+  #app::after {
+    height: 60px;
+  }
 
   /* Home-индикатор iPhone не перекрывает нижний ряд сетки */
   #grid-mobile {
