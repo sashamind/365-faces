@@ -10,6 +10,12 @@
   <meta property="og:type" content="website" />
   <meta property="og:title" content="365 лиц" />
   <meta property="og:description" content="Фотопроект: один портрет на каждый день года." />
+  <meta property="og:url" content="https://sashamind.github.io/365-faces/" />
+  <meta property="og:image" content="https://sashamind.github.io/365-faces/og.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:locale" content="ru_RU" />
+  <meta name="twitter:card" content="summary_large_image" />
 
   <link rel="icon" href="favicon.svg" type="image/svg+xml" />
 
@@ -21,14 +27,14 @@
 
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&display=swap" rel="stylesheet" />
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
-  <link rel="stylesheet" href="style.css?v=6" />
+  <link rel="stylesheet" href="style.css?v=7" />
 </head>
 <body>
 <div id="app">
 
   <!-- Левая колонка — скроллится -->
   <div id="col-left">
-    <div id="grid-left"></div>
+    <div id="grid-left" role="group" aria-label="Портреты, часть 1"></div>
   </div>
 
   <!-- Центральная колонка — фиксированная -->
@@ -37,10 +43,10 @@
     <!-- Шапка с логотипами — на мобайле отдельная строка над фото -->
     <div id="logos-header">
       <div id="project-logo">
-        <img src="logo.svg" alt="Логотип" id="logo-svg" />
+        <img src="logo.svg" alt="Лица" id="logo-svg" />
       </div>
       <div id="project-logo-bottom">
-        <img src="logo2.svg" alt="Логотип 2" id="logo-svg-bottom" />
+        <img src="logo2.svg" alt="Митин" id="logo-svg-bottom" />
       </div>
     </div>
 
@@ -49,8 +55,8 @@
 
       <!-- Большое фото — два слоя для crossfade -->
       <div id="featured">
-        <img id="featured-a" src="" alt="" />
-        <img id="featured-b" src="" alt="" />
+        <img id="featured-a" alt="" />
+        <img id="featured-b" alt="" />
         <div id="scrub-overlay"></div>
       </div>
 
@@ -70,15 +76,15 @@
 
   <!-- Правая колонка — скроллится -->
   <div id="col-right">
-    <div id="grid-right"></div>
+    <div id="grid-right" role="group" aria-label="Портреты, часть 2"></div>
   </div>
 
   <!-- Мобильная сетка — горизонтальный скролл, 2 ряда -->
   <div id="col-bottom">
-    <div id="grid-mobile"></div>
+    <div id="grid-mobile" role="group" aria-label="Портреты"></div>
   </div>
 
 </div><!-- #app -->
-  <script src="script.js?v=6"></script>
+  <script src="script.js?v=7"></script>
 </body>
 </html>

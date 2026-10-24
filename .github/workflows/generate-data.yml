@@ -1,6 +1,6 @@
 name: Generate people.json
 
-# Пересобирает people.json когда в photos/ что-то меняется.
+# Пересобирает people.json и недостающие превью, когда в photos/ что-то меняется.
 # Рабочий процесс: положил папку с фото → запушил → JSON собрался сам.
 on:
   push:
@@ -22,13 +22,17 @@ jobs:
         with:
           node-version: 20
 
-      - name: Generate people.json
+      # sharp — для автоматических превью thumb.jpg
+      - name: Install sharp
+        run: npm install --no-save --no-package-lock sharp@0.33.5
+
+      - name: Generate people.json and thumbnails
         run: node generate-data.js
 
       - name: Commit if changed
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add people.json
-          git diff --cached --quiet || git commit -m "chore: regenerate people.json"
+          git add people.json photos
+          git diff --cached --quiet || git commit -m "chore: regenerate people.json and thumbnails"
           git push

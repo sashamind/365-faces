@@ -52,6 +52,10 @@ html, body {
   position: absolute;
   top: 0;
   bottom: 0;
+  /* Стартовая позиция = расчёт calcLayout (центр 28%),
+     чтобы до запуска JS колонка не прыгала от левого края */
+  left: 36%;
+  width: 28%;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -110,6 +114,14 @@ html, body {
     transform: scale(1);
   }
 }
+
+/* Фокус с клавиатуры */
+.cell:focus-visible {
+  outline: 2px solid #e03030;
+  outline-offset: 2px;
+  z-index: 6;
+}
+.cell:focus-visible img { opacity: 1; }
 
 /* Ховер */
 .cell.is-active {

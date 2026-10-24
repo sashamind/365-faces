@@ -13,6 +13,29 @@ const CONFIG = {
 };
 
 /* ============================================
+   ФОЛБЭК GSAP — если CDN не загрузился,
+   сразу ставим конечные значения без анимации,
+   чтобы сайт не остался белым
+   ============================================ */
+if (!window.gsap) {
+  const apply = (targets, vars) => {
+    const els = Array.isArray(targets) ? targets : [targets];
+    els.forEach(el => {
+      if (!el) return;
+      if (vars.opacity !== undefined) el.style.opacity = vars.opacity;
+      if (vars.y !== undefined) el.style.transform = `translateY(${vars.y}px)`;
+    });
+    if (vars.onComplete) setTimeout(vars.onComplete, 0);
+  };
+  window.gsap = {
+    to:             apply,
+    fromTo:         (targets, _from, to) => apply(targets, to),
+    killTweensOf:   () => {},
+    globalTimeline: { timeScale: () => {} },
+  };
+}
+
+/* ============================================
    ИМЕНА
    ============================================ */
 const NAMES = [
@@ -72,6 +95,50 @@ function thumbSrc(photoNum, w, h) {
   const p = PEOPLE_DATA[photoNum];
   if (p && p.real) return p.thumb || p.series[0];
   return `https://picsum.photos/seed/${photoNum * 100 + 1}/${w}/${h}`;
+}
+
+/* ============================================
+   ALT-ТЕКСТ — для скринридеров
+   ============================================ */
+function photoAlt(personId, idx) {
+  const p = PEOPLE_DATA[personId];
+  if (!p) return '';
+  const n = p.series.length;
+  return n > 1
+    ? `${p.name}, день ${personId}, фото ${idx + 1} из ${n}`
+    : `${p.name}, день ${personId}`;
+}
+
+/* ============================================
+   ЯЧЕЙКА СЕТКИ — общая для десктопа и мобайла
+   Кнопка для клавиатуры и скринридера
+   ============================================ */
+function createCell(photoNum, w, h) {
+  const cell = document.createElement('div');
+  cell.className   = 'cell cell-hidden';
+  cell.dataset.num = photoNum;
+  cell.dataset.src = thumbSrc(photoNum, w, h);
+  cell.tabIndex    = 0;
+  cell.setAttribute('role', 'button');
+  cell.setAttribute('aria-label', `${PEOPLE_DATA[photoNum].name}, день ${photoNum}`);
+
+  const img    = document.createElement('img');
+  img.alt      = '';
+  img.decoding = 'async';
+
+  cell.appendChild(img);
+  return cell;
+}
+
+// Реальные данные пришли после постройки сетки — обновляем превью и подписи
+function refreshCells() {
+  document.querySelectorAll('.cell').forEach(cell => {
+    const num = parseInt(cell.dataset.num);
+    const p   = PEOPLE_DATA[num];
+    if (!p || !p.real) return;
+    cell.dataset.src = thumbSrc(num);
+    cell.setAttribute('aria-label', `${p.name}, день ${num}`);
+  });
 }
 
 /* ============================================
@@ -209,8 +276,7 @@ function buildSideGridFromArray(container, indices, cols, cellW, cellH) {
     const col = i % cols;
     const row = Math.floor(i / cols);
 
-    const cell = document.createElement('div');
-    cell.className    = 'cell cell-hidden';
+    const cell = createCell(photoNum, cellW * 2, cellH * 2);
 
     // halfGap от края = симметрия с зазором между ячейками
     cell.style.left   = (col * cellW + halfGap) + 'px';
@@ -218,15 +284,6 @@ function buildSideGridFromArray(container, indices, cols, cellW, cellH) {
     cell.style.width  = (cellW - CONFIG.cellGap) + 'px';
     cell.style.height = (cellH - CONFIG.cellGap) + 'px';
 
-    cell.dataset.num = photoNum;
-    cell.dataset.day = photoNum;
-    cell.dataset.src = thumbSrc(photoNum, cellW * 2, cellH * 2);
-
-    const img = document.createElement('img');
-    img.alt      = '';
-    img.decoding = 'async';
-
-    cell.appendChild(img);
     container.appendChild(cell);
     cells.push(cell);
   });
@@ -256,6 +313,11 @@ function applyLayout() {
   featuredWrap.style.margin = '0 auto';
   featuredEl.style.height   = featH + 'px';
 
+  // Сбрасываем ширины, проставленные мобильной каруселью
+  const footer = document.getElementById('featured-footer');
+  footer.style.width  = '';
+  footer.style.margin = '';
+  document.getElementById('logos-header').style.width = '';
 
   // Строим сетки — порядок стабилен между resize
   const indices = getShuffledIndices();
@@ -308,16 +370,7 @@ function buildMobileGrid() {
   const indices = getShuffledIndices();
 
   cellsMobile = indices.map(photoNum => {
-    const cell       = document.createElement('div');
-    cell.className   = 'cell cell-hidden';
-    cell.dataset.num = photoNum;
-    cell.dataset.src = thumbSrc(photoNum, cellW * 2, cellH * 2);
-
-    const img    = document.createElement('img');
-    img.alt      = '';
-    img.decoding = 'async';
-
-    cell.appendChild(img);
+    const cell = createCell(photoNum, cellW * 2, cellH * 2);
     gridEl.appendChild(cell);
     return cell;
   });
@@ -397,6 +450,7 @@ function showPhotoSrc(src) {
   pendingSrc = null;
 
   layerBot.src = src;
+  layerBot.alt = photoAlt(currentPersonId, currentSeriesIdx);
 
   const doFade = () => {
     gsap.to(layerTop, {
@@ -408,6 +462,7 @@ function showPhotoSrc(src) {
         layerTop.style.zIndex  = '1';
         layerBot.style.zIndex  = '2';
         layerTop.style.opacity = '1';
+        layerTop.alt           = '';  // нижний слой скринридеру не нужен
         const tmp = layerTop;
         layerTop  = layerBot;
         layerBot  = tmp;
@@ -548,6 +603,24 @@ function updateSeriesIndicator() {
    СКРАБИНГ МЫШЬЮ ПО БОЛЬШОМУ ФОТО
    Двигаешь мышь влево-вправо — листаешь серию
    ============================================ */
+/* ============================================
+   ШАГ ПО СЕРИИ — общий для клика, тачпада,
+   свайпа и стрелок; всегда по кругу
+   ============================================ */
+function stepSeries(dir) {
+  if (currentSeries.length <= 1) return;
+  const n = currentSeries.length;
+  currentSeriesIdx = (currentSeriesIdx + dir + n) % n;
+
+  // Мобильная раскладка: двигаем карусель, а не скрытый crossfade
+  if (isMobile()) {
+    positionCarousel(currentSeriesIdx, true);
+  } else {
+    showPhotoSrc(currentSeries[currentSeriesIdx]);
+  }
+  updateSeriesIndicator();
+}
+
 function setupScrubbing() {
   const scrubOverlay = document.getElementById('scrub-overlay');
   if (!scrubOverlay) return;
@@ -556,13 +629,8 @@ function setupScrubbing() {
   // Скрабинг позицией мыши убран: он затирал выбор,
   // сделанный колесом/стрелками, при любом сдвиге курсора.
 
-  // Десктоп: клик по фото — следующее в серии (по кругу)
-  scrubOverlay.addEventListener('click', () => {
-    if (currentSeries.length <= 1) return;
-    currentSeriesIdx = (currentSeriesIdx + 1) % currentSeries.length;
-    showPhotoSrc(currentSeries[currentSeriesIdx]);
-    updateSeriesIndicator();
-  });
+  // Десктоп: клик по фото — следующее в серии
+  scrubOverlay.addEventListener('click', () => stepSeries(1));
 
   // Десктоп: горизонтальный свайп тачпадом
   let accumX = 0;
@@ -571,15 +639,12 @@ function setupScrubbing() {
     e.preventDefault();
     accumX += e.deltaX;
     if (Math.abs(accumX) < 40) return;
-    currentSeriesIdx = accumX > 0
-      ? Math.min(currentSeriesIdx + 1, currentSeries.length - 1)
-      : Math.max(currentSeriesIdx - 1, 0);
+    const dir = accumX > 0 ? 1 : -1;
     accumX = 0;
-    showPhotoSrc(currentSeries[currentSeriesIdx]);
-    updateSeriesIndicator();
+    stepSeries(dir);
   }, { passive: false });
 
-  // Мобайл: свайп пальцем — переключение при отпускании
+  // Планшет в десктопной раскладке: свайп пальцем — переключение при отпускании
   let touchStartX   = null;
   let touchStartY   = null;
   let swipeIsHoriz  = false;
@@ -609,33 +674,34 @@ function setupScrubbing() {
     touchStartX  = null;
     swipeIsHoriz = false;
     if (Math.abs(deltaX) < 50) return; // слишком короткий — игнорируем
-    currentSeriesIdx = deltaX > 0
-      ? Math.min(currentSeriesIdx + 1, currentSeries.length - 1)
-      : Math.max(currentSeriesIdx - 1, 0);
-    showPhotoSrc(currentSeries[currentSeriesIdx]);
-    updateSeriesIndicator();
+    stepSeries(deltaX > 0 ? 1 : -1);
   }, { passive: true });
 }
 
 /* ============================================
-   КЛАВИАТУРА — стрелки листают серию
+   КЛАВИАТУРА — стрелки листают серию,
+   Enter/пробел на ячейке открывает человека
    ============================================ */
 function setupKeyboard() {
   document.addEventListener('keydown', (e) => {
-    if (currentSeries.length <= 1) return;
-    if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
-
-    currentSeriesIdx = e.key === 'ArrowRight'
-      ? (currentSeriesIdx + 1) % currentSeries.length
-      : (currentSeriesIdx - 1 + currentSeries.length) % currentSeries.length;
-
-    // Мобильная раскладка: двигаем карусель, а не скрытый crossfade
-    if (isMobile()) {
-      positionCarousel(currentSeriesIdx, true);
-    } else {
-      showPhotoSrc(currentSeries[currentSeriesIdx]);
+    const cell = e.target.closest && e.target.closest('.cell');
+    if (cell && (e.key === 'Enter' || e.key === ' ')) {
+      e.preventDefault();
+      document.querySelectorAll('.cell.is-active')
+        .forEach(c => c.classList.remove('is-active'));
+      cell.classList.add('is-active');
+      showPerson(parseInt(cell.dataset.num));
+      return;
     }
-    updateSeriesIndicator();
+
+    if (e.key === 'ArrowRight') stepSeries(1);
+    if (e.key === 'ArrowLeft')  stepSeries(-1);
+  });
+
+  // Фокус с клавиатуры на ещё не показанной ячейке — показываем её
+  document.addEventListener('focusin', (e) => {
+    const cell = e.target.closest && e.target.closest('.cell');
+    if (cell) loadAndRevealCell(cell);
   });
 }
 
@@ -890,6 +956,7 @@ function loadFeaturedPhoto() {
     layerTop.onload  = finish;
     layerTop.onerror = () => { if (!done) { done = true; resolve(); } };
     layerTop.src     = currentSeries[0];
+    layerTop.alt     = photoAlt(num, 0);
 
     if (layerTop.complete && layerTop.naturalWidth > 0) finish();
   });
@@ -946,9 +1013,19 @@ function handleResize() {
       buildMobileGrid();   // сетка ПОСЛЕ карусели — offsetHeight корректный
       animateMobileGrid();
     } else {
-      // Если пришли с мобильной раскладки — crossfade-слои пустые, шторки закрыты
-      if (!layerTop.src && currentSeries.length > 0) {
-        layerTop.src = currentSeries[currentSeriesIdx];
+      // Если пришли с мобильной раскладки — crossfade-слои пустые
+      // или устарели, шторки закрыты. Ставим текущее фото на верхний слой.
+      // getAttribute, а не .src: пустой .src возвращает URL страницы
+      const src = currentSeries[currentSeriesIdx];
+      if (src && layerTop.getAttribute('src') !== src) {
+        if (gsap.killTweensOf) gsap.killTweensOf(layerTop);
+        isFading   = false;
+        pendingSrc = null;
+        layerTop.src           = src;
+        layerTop.alt           = photoAlt(currentPersonId, currentSeriesIdx);
+        layerTop.style.opacity = '1';
+        layerTop.style.zIndex  = '2';
+        layerBot.style.zIndex  = '1';
       }
       featuredWrap.classList.add('is-revealed');
       featuredEl.classList.add('is-open');
@@ -987,13 +1064,13 @@ function buildCarousel(series, idx) {
   outer.style.gap    = gap + 'px';
   outer.innerHTML    = '';
 
-  series.forEach(src => {
+  series.forEach((src, i) => {
     const slide       = document.createElement('div');
     slide.className   = 'carousel-slide';
     slide.style.width  = slideW + 'px';
     slide.style.height = slideH + 'px';
     const img         = document.createElement('img');
-    img.src = src; img.alt = '';
+    img.src = src; img.alt = photoAlt(currentPersonId, i);
     slide.appendChild(img);
     outer.appendChild(slide);
   });
@@ -1049,12 +1126,7 @@ function setupCarouselScroll() {
 
   // Тап по фото — следующий слайд (по кругу).
   // После свайпа click не срабатывает, конфликта со скроллом нет
-  outer.addEventListener('click', () => {
-    if (currentSeries.length <= 1) return;
-    currentSeriesIdx = (currentSeriesIdx + 1) % currentSeries.length;
-    positionCarousel(currentSeriesIdx, true);
-    updateSeriesIndicator();
-  });
+  outer.addEventListener('click', () => stepSeries(1));
 }
 
 /* ============================================
@@ -1067,8 +1139,9 @@ async function init() {
   }
 
   PEOPLE_DATA = buildPeopleData();
+  applyLayout();        // раскладка сразу — без сдвига вёрстки, пока грузится JSON
   await loadRealData(); // реальные фото из photos/ перекрывают заглушки
-  applyLayout();
+  refreshCells();
   await loadFeaturedPhoto();
 
   // На мобайле сетку строим ПОСЛЕ карусели (нужен корректный offsetHeight col-bottom)
