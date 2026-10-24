@@ -34,7 +34,7 @@ html, body {
   left: 0;
   right: 0;
   bottom: 0;
-  height: 140px;
+  height: 220px;
   background: linear-gradient(to bottom, rgba(255, 255, 255, 0), #fff);
   pointer-events: none;
   z-index: 8;
@@ -474,7 +474,7 @@ html, body {
 
   /* На телефоне градиент ниже — сетка и так невысокая */
   #app::after {
-    height: 60px;
+    height: 100px;
   }
 
   /* Home-индикатор iPhone не перекрывает нижний ряд сетки */
