@@ -26,21 +26,21 @@ html, body {
   align-items: stretch;
 }
 
-/* Левая колонка — ленты фото внутри едут сами (setupAutoScroll) */
+/* Левая колонка — скроллится */
 #col-left {
   position: relative;
   flex-shrink: 0;
-  overflow-y: hidden;
+  overflow-y: scroll;
   overflow-x: hidden;
   scrollbar-width: none;
 }
 #col-left::-webkit-scrollbar { display: none; }
 
-/* Правая колонка — так же */
+/* Правая колонка — скроллится */
 #col-right {
   position: relative;
   flex-shrink: 0;
-  overflow-y: hidden;
+  overflow-y: scroll;
   overflow-x: hidden;
   scrollbar-width: none;
   margin-left: auto;
@@ -70,13 +70,6 @@ html, body {
 #grid-left,
 #grid-right {
   position: relative;
-}
-
-/* Колонка фото — лента, едет transform'ом */
-.grid-strip {
-  position: absolute;
-  top: 0;
-  will-change: transform;
 }
 
 /* ============================================
