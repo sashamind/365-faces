@@ -46,6 +46,7 @@ async function main() {
     for (const dir of fs.readdirSync(PHOTOS_DIR).sort()) {
       const fullDir = path.join(PHOTOS_DIR, dir);
       if (!fs.statSync(fullDir).isDirectory()) continue;
+      if (dir === 'faces') continue; // исходники для prepare-photos.js
 
       // Имя папки: «025-Елена», «025_Елена» или просто «025»
       const m = dir.match(/^(\d{1,3})(?:[-_](.+))?$/);

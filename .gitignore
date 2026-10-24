@@ -1,2 +1,5 @@
 .DS_Store
 node_modules/
+
+# Исходники фото — готовятся prepare-photos.js, в гит идут только результаты
+photos/faces/

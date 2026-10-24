@@ -3,7 +3,8 @@
    ============================================ */
 const CONFIG = {
   total:            365,
-  photoAspect:      2 / 3,
+  photoAspect:      2 / 3,   // ячейки сетки (превью кадрируются)
+  featuredAspect:   4 / 5,   // область большого фото: фото вписано целиком
   centerWidthRatio: 0.28,
   cellGap:          10,
   fadeDuration:     0.4,
@@ -52,7 +53,7 @@ function buildPeopleData() {
     const seriesCount = 2 + (id % 5);
     const series = [];
     for (let s = 1; s <= seriesCount; s++) {
-      series.push(`https://picsum.photos/seed/${id * 100 + s}/800/1200`);
+      series.push(`https://picsum.photos/seed/${id * 100 + s}/800/1000`);
     }
     data[id] = { id, name: NAMES[id % NAMES.length], series, real: false };
   }
@@ -75,7 +76,7 @@ async function loadRealData() {
       if (!PEOPLE_DATA[num] || !p.series || !p.series.length) return;
       PEOPLE_DATA[num] = {
         id:     num,
-        name:   p.name || PEOPLE_DATA[num].name,
+        name:   p.name || '',  // без имени — пустая подпись, не выдуманное
         series: p.series,
         thumb:  p.thumb || null,
         real:   true,
@@ -100,13 +101,18 @@ function thumbSrc(photoNum, w, h) {
 /* ============================================
    ALT-ТЕКСТ — для скринридеров
    ============================================ */
+function personLabel(personId) {
+  const p = PEOPLE_DATA[personId];
+  return p && p.name ? `${p.name}, день ${personId}` : `День ${personId}`;
+}
+
 function photoAlt(personId, idx) {
   const p = PEOPLE_DATA[personId];
   if (!p) return '';
   const n = p.series.length;
   return n > 1
-    ? `${p.name}, день ${personId}, фото ${idx + 1} из ${n}`
-    : `${p.name}, день ${personId}`;
+    ? `${personLabel(personId)}, фото ${idx + 1} из ${n}`
+    : personLabel(personId);
 }
 
 /* ============================================
@@ -120,7 +126,7 @@ function createCell(photoNum, w, h) {
   cell.dataset.src = thumbSrc(photoNum, w, h);
   cell.tabIndex    = 0;
   cell.setAttribute('role', 'button');
-  cell.setAttribute('aria-label', `${PEOPLE_DATA[photoNum].name}, день ${photoNum}`);
+  cell.setAttribute('aria-label', personLabel(photoNum));
 
   const img    = document.createElement('img');
   img.alt      = '';
@@ -128,17 +134,6 @@ function createCell(photoNum, w, h) {
 
   cell.appendChild(img);
   return cell;
-}
-
-// Реальные данные пришли после постройки сетки — обновляем превью и подписи
-function refreshCells() {
-  document.querySelectorAll('.cell').forEach(cell => {
-    const num = parseInt(cell.dataset.num);
-    const p   = PEOPLE_DATA[num];
-    if (!p || !p.real) return;
-    cell.dataset.src = thumbSrc(num);
-    cell.setAttribute('aria-label', `${p.name}, день ${num}`);
-  });
 }
 
 /* ============================================
@@ -208,17 +203,17 @@ function calcLayout() {
   const maxFeatH  = vh - reservedH;
 
   let featW = centerW - 32;
-  let featH = Math.round(featW / CONFIG.photoAspect);
+  let featH = Math.round(featW / CONFIG.featuredAspect);
 
   if (featH > maxFeatH) {
     featH = maxFeatH;
-    featW = Math.round(featH * CONFIG.photoAspect);
+    featW = Math.round(featH * CONFIG.featuredAspect);
   }
 
   // Чётный featW — чтобы offset = (centerW - featW) / 2
   // всегда был целым числом и фото стояло ровно
   if (featW % 2 !== 0) featW -= 1;
-  featH = Math.round(featW / CONFIG.photoAspect);
+  featH = Math.round(featW / CONFIG.featuredAspect);
 
   return { vw, vh, centerW, sideW, featW, featH };
 }
@@ -244,17 +239,29 @@ function shuffleArray(arr) {
 }
 
 /* ============================================
-   ПОРЯДОК СЕТКИ — перемешивается один раз,
-   при resize порядок сохраняется
+   ПОРЯДОК СЕТКИ — сначала реальные фото,
+   потом заглушки; внутри групп — случайно.
+   Перемешивается один раз, при resize сохраняется
    ============================================ */
 let shuffledIndices = null;
 
 function getShuffledIndices() {
   if (!shuffledIndices) {
-    shuffledIndices = Array.from({ length: CONFIG.total }, (_, i) => i + 1);
-    shuffleArray(shuffledIndices);
+    const all  = Array.from({ length: CONFIG.total }, (_, i) => i + 1);
+    const real = all.filter(id => PEOPLE_DATA[id].real);
+    const fake = all.filter(id => !PEOPLE_DATA[id].real);
+    shuffleArray(real);
+    shuffleArray(fake);
+    shuffledIndices = real.concat(fake);
   }
   return shuffledIndices;
+}
+
+// Случайный день с реальным фото (или любой, пока реальных нет)
+function randomPersonId() {
+  const real = Object.values(PEOPLE_DATA).filter(p => p.real).map(p => p.id);
+  if (real.length) return real[Math.floor(Math.random() * real.length)];
+  return Math.floor(Math.random() * CONFIG.total) + 1;
 }
 
 /* ============================================
@@ -322,9 +329,9 @@ function applyLayout() {
   // Строим сетки — порядок стабилен между resize
   const indices = getShuffledIndices();
 
-  const leftCount    = Math.ceil(CONFIG.total / 2);
-  const leftIndices  = indices.slice(0, leftCount);
-  const rightIndices = indices.slice(leftCount);
+  // Через одного: реальные фото оказываются вверху обеих колонок
+  const leftIndices  = indices.filter((_, i) => i % 2 === 0);
+  const rightIndices = indices.filter((_, i) => i % 2 === 1);
 
   const gridLeft  = document.getElementById('grid-left');
   const gridRight = document.getElementById('grid-right');
@@ -528,9 +535,6 @@ function showPerson(personId) {
   currentPersonId  = personId;
   currentSeries    = person.series;
   currentSeriesIdx = 0;
-
-  // Дип-линк: день можно шарить ссылкой вида .../#25
-  history.replaceState(null, '', '#' + personId);
 
   updateCaption(person.name, personId);
 
@@ -917,11 +921,8 @@ function setupScrollBoth() {
    ============================================ */
 function loadFeaturedPhoto() {
   return new Promise(resolve => {
-    // Дип-линк #25 — открываем этот день, иначе случайный
-    const hashNum = parseInt((location.hash || '').slice(1));
-    const num = (hashNum >= 1 && hashNum <= CONFIG.total)
-      ? hashNum
-      : Math.floor(Math.random() * CONFIG.total) + 1;
+    // При каждой загрузке — случайный человек из реальных фото
+    const num = randomPersonId();
 
     currentPersonId  = num;
     currentSeries    = PEOPLE_DATA[num].series;
@@ -1045,8 +1046,8 @@ function getCarouselMetrics() {
   const maxH    = Math.round(appH * 0.52);
   const vwRatio = vw <= 480 ? 0.80 : 0.65;
   let slideW = Math.round(vw * vwRatio);
-  let slideH = Math.round(slideW / CONFIG.photoAspect);
-  if (slideH > maxH) { slideH = maxH; slideW = Math.round(slideH * CONFIG.photoAspect); }
+  let slideH = Math.round(slideW / CONFIG.featuredAspect);
+  if (slideH > maxH) { slideH = maxH; slideW = Math.round(slideH * CONFIG.featuredAspect); }
   return { slideW, slideH, gap: 16 };
 }
 
@@ -1141,7 +1142,8 @@ async function init() {
   PEOPLE_DATA = buildPeopleData();
   applyLayout();        // раскладка сразу — без сдвига вёрстки, пока грузится JSON
   await loadRealData(); // реальные фото из photos/ перекрывают заглушки
-  refreshCells();
+  shuffledIndices = null;
+  applyLayout();        // пересобираем сетку: реальные фото — первыми
   await loadFeaturedPhoto();
 
   // На мобайле сетку строим ПОСЛЕ карусели (нужен корректный offsetHeight col-bottom)

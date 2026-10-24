@@ -1,0 +1,10 @@
+{
+  "name": "365-faces",
+  "private": true,
+  "scripts": {
+    "prepare-photos": "node prepare-photos.js && node generate-data.js"
+  },
+  "devDependencies": {
+    "sharp": "0.33.5"
+  }
+}
