@@ -230,7 +230,7 @@ html, body {
 
 #caption-name {
   flex: 1;
-  font-size: 12px;
+  font-size: 11px; /* как у номера дня */
   font-weight: 500;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -492,11 +492,6 @@ html, body {
   }
 }
 
-@media (max-width: 480px) {
-  #caption-name {
-    font-size: 10px;
-  }
-}
 
 /* ============================================
    УМЕНЬШЕННОЕ ДВИЖЕНИЕ — системная настройка
